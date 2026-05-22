@@ -34,3 +34,4 @@ jobs:
         with:
           name: ChutaXuta-APK
           path: project/ChulaXuta_Android/app/build/outputs/apk/debug/*.apk
+          
