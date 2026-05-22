@@ -23,14 +23,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Build APK
         run: |
-          cd project/ChulaXuta_Android_Project
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
+          cd project/ChulaXuta_Android
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ChutaXuta-APK
-          path: project/ChulaXuta_Android_Project/app/build/outputs/apk/debug/*.apk
+          path: project/ChulaXuta_Android/app/build/outputs/apk/debug/*.apk
