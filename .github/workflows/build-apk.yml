@@ -27,11 +27,9 @@ jobs:
       - name: Build APK
         run: |
           cd project/ChulaXuta_Android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: ChutaXuta-APK
           path: project/ChulaXuta_Android/app/build/outputs/apk/debug/*.apk
-          
