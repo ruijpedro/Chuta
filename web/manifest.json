@@ -1,1 +1,9 @@
-
+{
+  "name": "Chuta Xuta",
+  "short_name": "Chuta Xuta",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101a31",
+  "theme_color": "#101a31",
+  "icons": [{ "src": "logo.png", "sizes": "512x512", "type": "image/png" }]
+}
