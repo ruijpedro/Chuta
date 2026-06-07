@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#101a31" />
+<title>Chuta Xuta WebApp</title>
+<style>
+:root{--bg:#101a31;--card:#18243e;--line:#2a3757;--txt:#f7f8fb;--mut:#aab4cc;--gold:#ffd21f;--green:#20c65a;--red:#ff3b48;--blue:#3c7cff;--orange:#ff9f1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at top,#203657 0,#10182d 52%,#080d19 100%);color:var(--txt);min-height:100vh}
+.app{max-width:560px;margin:0 auto;min-height:100vh;padding:18px 14px 30px}
+.hero{text-align:center;padding:18px 8px 10px}
+.logo{width:116px;height:116px;border-radius:50%;background:white;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;padding:8px;box-shadow:0 0 0 5px rgba(255,255,255,.08),0 12px 35px rgba(0,0,0,.35)}
+.logo img{max-width:100%;max-height:100%;object-fit:contain}
+.title{font-size:31px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
+.sub{color:var(--mut);font-size:12px;letter-spacing:2px;font-weight:800;margin-top:4px}
+.date{display:inline-block;margin-top:12px;background:rgba(255,210,31,.12);color:var(--gold);border:1px solid rgba(255,210,31,.25);padding:8px 14px;border-radius:999px;font-weight:900;font-size:13px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(255,255,255,.07);padding:6px;border-radius:18px;margin:16px 0}
+.tab{border:0;border-radius:13px;padding:10px 4px;background:transparent;color:var(--mut);font-weight:900;font-size:11px}
+.tab.on{background:var(--gold);color:#121212}
+.panel{background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:14px;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.section-title{font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-size:13px;color:var(--gold);margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:rgba(0,0,0,.18);border-radius:17px;padding:13px 8px;text-align:center}
+.num{font-size:25px;font-weight:900}
+.lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px}
+.player{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:11px;margin:8px 0}
+.pname{font-weight:900;font-size:15px}
+.state,.tag{display:inline-block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:5px 8px;border-radius:999px;margin-top:5px;margin-right:4px}
+.ok{background:rgba(32,198,90,.18);color:#75ff9e}.pend{background:rgba(255,210,31,.18);color:#ffe36e}.no{background:rgba(255,59,72,.18);color:#ff8a92}
+.month{background:rgba(60,124,255,.20);color:#9dbbff}.game{background:rgba(255,159,28,.20);color:#ffd093}
+.btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.mini{border:0;border-radius:10px;padding:8px 9px;font-size:11px;font-weight:900;color:white}
+.b-ok{background:var(--green)}.b-p{background:var(--orange)}.b-no{background:var(--red)}
+.mainbtn{width:100%;border:0;border-radius:16px;padding:14px;margin-top:8px;font-size:15px;font-weight:900;letter-spacing:1.2px;background:var(--gold);color:#111}
+.mainbtn.dark{background:#273553;color:white}.mainbtn.green{background:var(--green);color:white}.mainbtn.blue{background:var(--blue);color:white}.mainbtn.red{background:var(--red);color:white}.mainbtn.orange{background:var(--orange);color:white}.mainbtn:disabled{opacity:.42}
+.input,.select,.textarea{width:100%;border:1px solid var(--line);background:#10182d;color:white;border-radius:13px;padding:13px;margin:6px 0;font-weight:700}
+.textarea{height:110px;resize:vertical}
+.teams{display:grid;gap:10px}
+.team{border-radius:18px;padding:12px;border:1px solid rgba(255,255,255,.12)}
+.team h3{margin:0 0 9px;font-size:15px;text-transform:uppercase;letter-spacing:2px}
+.team.green{background:linear-gradient(160deg,rgba(32,198,90,.24),rgba(32,198,90,.06));border-color:rgba(32,198,90,.45)}
+.team.red{background:linear-gradient(160deg,rgba(255,59,72,.24),rgba(255,59,72,.06));border-color:rgba(255,59,72,.45)}
+.team.blue{background:linear-gradient(160deg,rgba(60,124,255,.24),rgba(60,124,255,.06));border-color:rgba(60,124,255,.45)}
+.team.yellow{background:linear-gradient(160deg,rgba(255,210,31,.28),rgba(255,210,31,.08));border-color:rgba(255,210,31,.55)}
+.member{background:rgba(255,255,255,.09);padding:9px 10px;border-radius:12px;margin:6px 0;font-weight:800}
+.empty{color:var(--mut);font-size:12px;text-align:center;padding:12px;letter-spacing:1px;text-transform:uppercase}
+.hide{display:none}.hint{font-size:12px;color:var(--mut);line-height:1.45}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:white;padding:12px 16px;border-radius:999px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;z-index:99}.toast.show{opacity:1}
+.disclaimer{line-height:1.55;font-size:13px;color:#e6e9f2}
+.disclaimer b{color:var(--gold)}
+</style>
+<link rel="manifest" href="manifest.json" />
+</head>
+<body>
+<div class="app">
+  <div class="hero">
+    <div class="logo"><img src="logo.png" alt="Chuta Xuta" /></div>
+    <div class="title">Chuta Xuta</div>
+    <div class="sub">WEBAPP · FUTEBOL CLUBE · LEIRIA</div>
+    <div class="date" id="gameDate">⚽ Quinta-feira</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="show('pres')" id="tpres">Jogo</button>
+    <button class="tab" onclick="show('teams')" id="tteams">Equipas</button>
+    <button class="tab" onclick="show('more')" id="tmore">Mais</button>
+    <button class="tab" onclick="show('disc')" id="tdisc">Aviso</button>
+  </div>
+
+  <div id="pres">
+    <div class="panel stats">
+      <div class="stat"><div class="num" id="cOk">0</div><div class="lbl">Confirmados</div></div>
+      <div class="stat"><div class="num" id="cPend">0</div><div class="lbl">Pendentes</div></div>
+      <div class="stat"><div class="num" id="cNo">0</div><div class="lbl">Não vão</div></div>
+    </div>
+    <div class="panel" style="padding:10px;">
+<p class="hint" style="text-align:center;margin:8px 0 0;">Atualiza presenças entre telemóveis</p>
+    </div>
+    <div class="panel" style="padding:10px;">
+      <button class="mainbtn blue" onclick="syncSheets()">🔄 Sincronizar</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Convocatória</div>
+      <div id="players"></div>
+      <button class="mainbtn green" onclick="confirmAll()">Confirmar todos</button>
+    </div>
+  </div>
+
+  <div id="teams" class="hide">
+    <div class="panel">
+      <div class="section-title">Escolha automática</div>
+      <p class="hint">Sorteia automaticamente só os jogadores confirmados. Até 10 jogadores faz 5v5. Com muitos jogadores cria 3 equipas automaticamente.</p>
+      <button class="mainbtn" onclick="drawTeams()">⚽ Sortear 2 Equipas</button>
+      <button class="mainbtn orange" onclick="drawThreeTeams()">🟢🔴🟡 Sortear 3 Equipas</button>
+      <button class="mainbtn dark" onclick="shareWhatsApp()">📲 Partilhar no WhatsApp</button>
+    </div>
+    <div class="teams" id="teamsBox"></div>
+  </div>
+
+  <div id="more" class="hide">
+    <div class="panel">
+      <div class="section-title">Adicionar jogador pontual</div>
+      <input class="input" id="newName" placeholder="Nome do jogador" />
+      <select class="select" id="newType">
+        <option value="jogo">Ao jogo</option>
+        <option value="mes">Mensalidade</option>
+      </select>
+      <button class="mainbtn" onclick="addPlayer()">Adicionar</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Importar lista</div>
+      <textarea class="textarea" id="bulk" placeholder="Um nome por linha"></textarea>
+      <button class="mainbtn blue" onclick="bulkAdd()">Importar jogadores</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Notificação do jogo</div>
+      <p class="hint">Agenda uma notificação para a próxima quinta-feira às 18:00, para lembrar a confirmação de presença.</p>
+      <button class="mainbtn" onclick="scheduleReminder()">🔔 Ativar notificação</button>
+      <button class="mainbtn red" onclick="resetApp()">Limpar dados e repor plantel</button>
+    </div>
+  </div>
+
+  
+    <div class="panel">
+      <div class="section-title">WebApp</div>
+      <p class="hint">Funciona em iPhone, Android e PC. No iPhone: Safari → Partilhar → Adicionar ao ecrã principal.</p>
+    </div>
+
+  <div id="disc" class="hide">
+    <div class="panel">
+      <div class="section-title">Disclaimer / Aviso Legal</div>
+      <div class="disclaimer">
+        <p><b>A aplicação “Chuta Xuta F.C.”</b> foi desenvolvida exclusivamente para fins recreativos, organizativos e de convívio entre amigos e membros do grupo.</p>
+        <p>Todas as funcionalidades presentes na aplicação, incluindo convocatórias, equipas automáticas, presenças, notificações e partilhas, destinam-se apenas a utilização informal e interna do grupo.</p>
+        <p>A aplicação não representa qualquer clube federado, associação desportiva oficial, entidade empresarial ou instituição legalmente constituída.</p>
+        <p>Os administradores da aplicação não assumem responsabilidade por falhas nas convocatórias, exclusões de equipas, derrotas humilhantes, azias competitivas, consumo excessivo de minis, litrosas, vinho ou derivados, nem por varridelas oficiais do grupo.</p>
+        <p>🍺 Utilização responsável recomendada.</p>
+        <p>⚽ Fair Play acima de tudo.</p>
+        <p><b>CHUTA XUTA F.C.</b><br>“Mais do que futebol… uma religião.”</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const basePlayers=[
+{name:"Iso",type:"mes"},{name:"R. Graça",type:"mes"},{name:"Miguel",type:"mes"},{name:"R. Rodrigues",type:"mes"},
+{name:"Rui",type:"mes"},{name:"Xavier",type:"jogo"},{name:"Daniel",type:"mes"},{name:"David",type:"jogo"},
+{name:"Filipe",type:"mes"},{name:"Gonçalo",type:"mes"},{name:"Luca",type:"mes"},{name:"João",type:"mes"},
+{name:"Marco",type:"jogo"},{name:"Paulo",type:"mes"},{name:"Patrick",type:"mes"},{name:"Frederico",type:"mes"},
+{name:"Giuliano",type:"mes"},{name:"Nuno",type:"jogo"},{name:"Castro",type:"mes"},{name:"Joaquim",type:"mes"},
+{name:"Samuel",type:"mes"},{name:"R. Castro",type:"jogo"},{name:"Davide",type:"mes"}
+];
+let players=JSON.parse(localStorage.getItem('cx_normal_players')||'null')||basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));
+players=players.map(p=>({type:"jogo",...p}));
+let teams=JSON.parse(localStorage.getItem('cx_normal_teams')||'[]');
+
+function save(){localStorage.setItem('cx_normal_players',JSON.stringify(players));localStorage.setItem('cx_normal_teams',JSON.stringify(teams));}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800)}
+function nextThursday(){
+  const now=new Date();
+  const day=now.getDay();
+
+  // Quinta-feira até às 23:29:59 mantém o jogo desse dia.
+  // A partir das 23:30 assume já o jogo da quinta-feira seguinte.
+  if(day===4){
+    const limite=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,30,0,0);
+    if(now<limite){
+      return new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
+    }
+  }
+
+  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
+  let add=(4-day+7)%7;
+
+  if(add===0){add=7;}
+
+  d.setDate(d.getDate()+add);
+  return d;
+}
+function setDate(){
+  const d=nextThursday();
+  const texto=d.toLocaleDateString('pt-PT',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('gameDate').textContent='⚽ Jogo · '+texto;
+}
+function show(id){['pres','teams','more','disc'].forEach(x=>document.getElementById(x).classList.toggle('hide',x!==id));['tpres','tteams','tmore','tdisc'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('t'+id).classList.add('on');render();}
+
+function setStatus(id,status){const antigo=players.find(p=>p.id===id);players=players.map(p=>p.id===id?{...p,status}:p);save();render();if(antigo){enviarSheets(antigo.name,status,antigo.type);}}
+
+function toggleStatus(id,status){
+  const jogador=players.find(p=>p.id===id);
+  if(!jogador){return;}
+  const novoEstado=jogador.status===status ? "pendente" : status;
+  setStatus(id,novoEstado);
+}
+function renderPlayers(){const box=document.getElementById('players');box.innerHTML='';players.forEach((p,i)=>{const d=document.createElement('div');d.className='player';const cls=p.status==='confirmado'?'ok':p.status==='nao'?'no':'pend';const txt=p.status==='confirmado'?'Confirmado':p.status==='nao'?'Não vai':'Pendente';const typeTxt=p.type==='mes'?'Mensalidade':'Ao jogo';const typeCls=p.type==='mes'?'month':'game';d.innerHTML=`<div><div class="pname">${i+1}. ${p.name}</div><span class="state ${cls}">${txt}</span><span class="tag ${typeCls}">${typeTxt}</span></div><div class="btns"><button class="mini b-ok" onclick="toggleStatus(${p.id},'confirmado')">Confirmar</button><button class="mini b-p" onclick="setStatus(${p.id},'pendente')">?</button><button class="mini b-no" onclick="toggleStatus(${p.id},'nao')">Não</button></div>`;box.appendChild(d);});}
+function renderStats(){document.getElementById('cOk').textContent=players.filter(p=>p.status==='confirmado').length;document.getElementById('cPend').textContent=players.filter(p=>p.status==='pendente').length;document.getElementById('cNo').textContent=players.filter(p=>p.status==='nao').length;}
+function renderTeams(){const box=document.getElementById('teamsBox');box.innerHTML='';const names=['Verde','Vermelha','Amarela'];const cls=['green','red','yellow'];if(!teams.length){box.innerHTML='<div class="panel empty">Ainda não há equipas sorteadas</div>';return;}teams.forEach((t,i)=>{const div=document.createElement('div');div.className='team '+cls[i%3];div.innerHTML='<h3>'+(i===0?'🟢 ':i===1?'🔴 ':'🟡 ')+names[i]+' · '+t.length+' jog.</h3>'+(t.length?t.map((p,k)=>`<div class="member">${k+1}. ${p.name}</div>`).join(''):'<div class="empty">Sem jogadores</div>');box.appendChild(div);});}
+function render(){renderStats();renderPlayers();renderTeams();}
+
+function shuffle(a){return a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);}
+function drawTeams(){drawTeamsNumber(2);}
+function drawThreeTeams(){drawTeamsNumber(3);}
+function drawTeamsNumber(nTeams){
+  const c=players.filter(p=>p.status==='confirmado');
+  if(c.length<4){toast('Confirma pelo menos 4 jogadores');return;}
+  if(nTeams===3 && c.length<6){toast('Confirma pelo menos 6 jogadores para 3 equipas');return;}
+  const sorted=shuffle(c);
+  teams=Array.from({length:nTeams},()=>[]);
+  sorted.forEach((p,i)=>teams[i%nTeams].push(p));
+  save();
+  render();
+  show('teams');
+  toast(nTeams===3?'3 equipas sorteadas':'2 equipas sorteadas');
+}
+function confirmAll(){players=players.map(p=>({...p,status:'confirmado'}));save();render();toast('Todos confirmados');}
+function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');players.push({id:Date.now(),name,type,status:'pendente',pontual:true});document.getElementById('newName').value='';save();render();toast('Jogador adicionado');}
+function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
+function resetApp(){if(!confirm('Repor plantel inicial?'))return;players=basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));teams=[];save();render();toast('Plantel reposto');}
+
+function abrirWhatsApp(txt){
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+
+
+function message(){const c=players.filter(p=>p.status==='confirmado');let msg='⚽ CHUTA XUTA - Convocatória\n';msg+='Confirmados: '+c.length+'\n\n';if(teams.length){teams.forEach((t,i)=>{msg+=(i===0?'🟢 VERDE':i===1?'🔴 VERMELHO':'🟡 AMARELA')+'\n';msg+=t.map((p,k)=>(k+1)+'. '+p.name).join('\n')+'\n\n';});}else{msg+=c.map((p,i)=>(i+1)+'. '+p.name).join('\n');}return msg;}
+function shareWhatsApp(){abrirWhatsApp(message());}
+function scheduleReminder(){const d=nextThursday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
+
+const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycby3L8XI894oQSWqac_cYcLxs5DeW8UbXYH86FI4BeZwFA8CJ2eMnRDEsR-P4lerhE1W/exec";
+
+function syncSheets(){
+  toast("A sincronizar...");
+  const callbackName="cxWebSync"+Date.now();
+
+  window[callbackName]=function(data){
+    try{
+      const rows=Array.isArray(data)?data:[];
+      const valid=rows.filter(function(r){
+        return r && r.jogador && String(r.jogador).trim()!=="";
+      });
+
+      if(valid.length===0){
+        toast("Sem jogadores válidos");
+        return;
+      }
+
+      const oldPlayers=Array.isArray(players)?players:[];
+      const merged=valid.map(function(r,i){
+        const nome=String(r.jogador||"").trim();
+        const old=oldPlayers.find(function(p){
+          return String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase();
+        });
+
+        const pres=String(r.presenca||"").trim().toUpperCase();
+        let status="pendente";
+        if(pres==="SIM" || pres==="VOU" || pres==="CONFIRMADO"){status="confirmado";}
+        if(pres==="NÃO" || pres==="NAO" || pres==="NO"){status="nao";}
+
+        const pag=String(r.pagamento||"").trim().toLowerCase();
+        const type=(pag==="mês" || pag==="mes" || pag==="mensalidade")?"mes":"jogo";
+
+        const jan=String(r.jantar||"").trim().toUpperCase();
+        const dinner=(jan==="SIM" || jan==="VOU");
+
+        return {
+          id: old && old.id ? old.id : Date.now()+i,
+          name:nome,
+          type:type,
+          status:status,
+          dinner:dinner,
+          paid: old && old.paid ? true:false,
+          pontual: old && old.pontual ? true:false
+        };
+      });
+
+      players=merged;
+      save();
+      render();
+      toast("Sincronizado: "+players.length+" jogadores");
+    }catch(err){
+      console.log(err);
+      toast("Erro ao ler dados");
+    }
+
+    try{delete window[callbackName];}catch(e){}
+    const el=document.getElementById(callbackName);
+    if(el && el.parentNode){el.parentNode.removeChild(el);}
+  };
+
+  const s=document.createElement("script");
+  s.id=callbackName;
+  s.src=SHEETS_API_URL+"?callback="+callbackName+"&t="+Date.now();
+  s.onerror=function(){
+    toast("Erro de comunicação");
+    try{delete window[callbackName];}catch(e){}
+  };
+  document.body.appendChild(s);
+}
+
+function enviarSheets(nome, status, tipo) {
+  const payload = {
+    jogador: nome,
+    presenca: status === "confirmado" ? "SIM" : (status === "nao" ? "NÃO" : ""),
+    pagamento: tipo === "mes" ? "mês" : "jogo",
+    jantar: ""
+  };
+
+  try {
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    }).then(function() {
+      setTimeout(syncSheets, 1500);
+    }).catch(function() {
+      toast("Guardado localmente");
+    });
+  } catch(e) {
+    toast("Guardado localmente");
+  }
+}
+
+function normalizaPresenca(v) {
+  const s = String(v || "").trim().toUpperCase();
+  if (s === "SIM" || s === "VOU" || s === "CONFIRMADO") return "confirmado";
+  if (s === "NÃO" || s === "NAO" || s === "NO") return "nao";
+  return "pendente";
+}
+
+function normalizaTipo(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (s === "mês" || s === "mes" || s === "mensalidade") return "mes";
+  return "jogo";
+}
+
+
+function gameKeyAtual(){
+  const d=nextThursday();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function resetNovoJogoSeNecessario(){
+  const key=gameKeyAtual();
+  const oldKey=localStorage.getItem('cx_game_key');
+
+  if(!oldKey){
+    localStorage.setItem('cx_game_key',key);
+    return;
+  }
+
+  if(oldKey!==key){
+    players=players.map(p=>({...p,status:'pendente',dinner:false}));
+    teams=[];
+    save();
+    localStorage.setItem('cx_game_key',key);
+    resetSheetPresencas();
+    toast('Novo jogo criado');
+  }
+}
+
+function resetSheetPresencas(){
+  try{
+    const cb='resetChuta_'+Date.now();
+    window[cb]=function(){
+      try{delete window[cb];}catch(e){}
+      const el=document.getElementById(cb);
+      if(el && el.parentNode)el.parentNode.removeChild(el);
+    };
+    const s=document.createElement('script');
+    s.id=cb;
+    s.src=SHEETS_API_URL+'?action=reset&callback='+cb+'&t='+Date.now();
+    document.body.appendChild(s);
+  }catch(e){
+    console.log(e);
+  }
+}
+
+resetNovoJogoSeNecessario();
+setDate();render();
+</script>
+</body>
+</html>
