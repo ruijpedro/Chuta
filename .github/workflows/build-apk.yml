@@ -1,1 +1,52 @@
+name: Build Android APK
 
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ChulaXuta_Android_Project.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          rm -rf project
+          unzip ChulaXuta_Android_Project.zip -d project
+          echo "Conteúdo extraído:"
+          find project -maxdepth 4 -type d | sort
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build APK
+        run: |
+          if [ -d "project/ChulaXuta_Android" ]; then
+            cd project/ChulaXuta_Android
+          else
+            GRADLE_DIR=$(find project -name "settings.gradle" | head -n 1 | xargs dirname)
+            if [ -z "$GRADLE_DIR" ]; then
+              GRADLE_DIR=$(find project -name "build.gradle" | head -n 1 | xargs dirname)
+            fi
+            cd "$GRADLE_DIR"
+          fi
+          gradle assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChutaXuta-APK
+          path: project/**/app/build/outputs/apk/debug/*.apk
