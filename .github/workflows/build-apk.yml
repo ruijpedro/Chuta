@@ -11,7 +11,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Unzip project
-        run: unzip ChulaXuta_Android_Project.zip -d project
+        run: |
+          rm -rf project
+          unzip ChulaXuta_Android_Project.zip -d project
+          echo "Conteúdo extraído:"
+          find project -maxdepth 3 -type d | sort
 
       - uses: actions/setup-java@v4
         with:
@@ -26,10 +30,15 @@ jobs:
 
       - name: Build APK
         run: |
-          cd project/ChulaXuta_Android
+          if [ -d "project/ChulaXuta_Android" ]; then
+            cd project/ChulaXuta_Android
+          else
+            GRADLE_DIR=$(find project -name "settings.gradle" -o -name "build.gradle" | head -n 1 | xargs dirname)
+            cd "$GRADLE_DIR"
+          fi
           gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: ChutaXuta-APK
-          path: project/ChulaXuta_Android/app/build/outputs/apk/debug/*.apk
+          path: project/**/app/build/outputs/apk/debug/*.apk
