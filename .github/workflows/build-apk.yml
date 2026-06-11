@@ -1,44 +1,31 @@
-name: Build Android APK
+name: Build Private APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Unzip project
-        run: |
-          rm -rf project
-          unzip ChulaXuta_Android_Project.zip -d project
-          echo "Conteúdo extraído:"
-          find project -maxdepth 3 -type d | sort
-
-      - uses: actions/setup-java@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          gradle-version: 8.10.2
-
-      - name: Build APK
-        run: |
-          if [ -d "project/ChulaXuta_Android" ]; then
-            cd project/ChulaXuta_Android
-          else
-            GRADLE_DIR=$(find project -name "settings.gradle" -o -name "build.gradle" | head -n 1 | xargs dirname)
-            cd "$GRADLE_DIR"
-          fi
-          gradle assembleDebug
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ChutaXuta-APK
-          path: project/**/app/build/outputs/apk/debug/*.apk
+          name: ChulaXuta-private-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
