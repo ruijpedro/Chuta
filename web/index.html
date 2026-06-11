@@ -84,8 +84,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     <div class="panel">
       <div class="section-title">Convocatória</div>
       <div id="players"></div>
-      <button class="mainbtn green" onclick="confirmAll()">Confirmar todos</button>
-    </div>
+</div>
   </div>
 
   <div id="teams" class="hide">
@@ -196,7 +195,30 @@ function toggleStatus(id,status){
   const novoEstado=jogador.status===status ? "pendente" : status;
   setStatus(id,novoEstado);
 }
-function renderPlayers(){const box=document.getElementById('players');box.innerHTML='';players.forEach((p,i)=>{const d=document.createElement('div');d.className='player';const cls=p.status==='confirmado'?'ok':p.status==='nao'?'no':'pend';const txt=p.status==='confirmado'?'Confirmado':p.status==='nao'?'Não vai':'Pendente';const typeTxt=p.type==='mes'?'Mensalidade':'Ao jogo';const typeCls=p.type==='mes'?'month':'game';d.innerHTML=`<div><div class="pname">${i+1}. ${p.name}</div><span class="state ${cls}">${txt}</span><span class="tag ${typeCls}">${typeTxt}</span></div><div class="btns"><button class="mini b-ok" onclick="toggleStatus(${p.id},'confirmado')">Confirmar</button><button class="mini b-p" onclick="setStatus(${p.id},'pendente')">?</button><button class="mini b-no" onclick="toggleStatus(${p.id},'nao')">Não</button></div>`;box.appendChild(d);});}
+function setStatusComPopup(id,status){
+  const jogador = players.find(p=>p.id===id);
+  if(!jogador){return;}
+
+  let pergunta = "";
+  if(status==="confirmado"){
+    pergunta = jogador.status==="confirmado"
+      ? "Desconfirmar presença de " + jogador.name + "?"
+      : "Confirmar presença de " + jogador.name + "?";
+  }else if(status==="nao"){
+    pergunta = jogador.status==="nao"
+      ? "Retirar o estado NÃO VAI de " + jogador.name + "?"
+      : "Marcar " + jogador.name + " como NÃO VAI?";
+  }else{
+    pergunta = "Voltar " + jogador.name + " a pendente?";
+  }
+
+  if(!confirm(pergunta)){return;}
+
+  const novoEstado = jogador.status===status ? "pendente" : status;
+  setStatus(id,novoEstado);
+}
+
+function renderPlayers(){const box=document.getElementById('players');box.innerHTML='';players.forEach((p,i)=>{const d=document.createElement('div');d.className='player';const cls=p.status==='confirmado'?'ok':p.status==='nao'?'no':'pend';const txt=p.status==='confirmado'?'Confirmado':p.status==='nao'?'Não vai':'Pendente';const typeTxt=p.type==='mes'?'Mensalidade':'Ao jogo';const typeCls=p.type==='mes'?'month':'game';d.innerHTML=`<div><div class="pname">${i+1}. ${p.name}</div><span class="state ${cls}">${txt}</span><span class="tag ${typeCls}">${typeTxt}</span></div><div class="btns"><button class="mini b-ok" onclick="setStatusComPopup(${p.id},'confirmado')">Confirmar</button><button class="mini b-p" onclick="setStatusComPopup(${p.id},'pendente')">?</button><button class="mini b-no" onclick="setStatusComPopup(${p.id},'nao')">Não</button></div>`;box.appendChild(d);});}
 function renderStats(){document.getElementById('cOk').textContent=players.filter(p=>p.status==='confirmado').length;document.getElementById('cPend').textContent=players.filter(p=>p.status==='pendente').length;document.getElementById('cNo').textContent=players.filter(p=>p.status==='nao').length;}
 function renderTeams(){const box=document.getElementById('teamsBox');box.innerHTML='';const names=['Verde','Vermelha','Amarela'];const cls=['green','red','yellow'];if(!teams.length){box.innerHTML='<div class="panel empty">Ainda não há equipas sorteadas</div>';return;}teams.forEach((t,i)=>{const div=document.createElement('div');div.className='team '+cls[i%3];div.innerHTML='<h3>'+(i===0?'🟢 ':i===1?'🔴 ':'🟡 ')+names[i]+' · '+t.length+' jog.</h3>'+(t.length?t.map((p,k)=>`<div class="member">${k+1}. ${p.name}</div>`).join(''):'<div class="empty">Sem jogadores</div>');box.appendChild(div);});}
 function render(){renderStats();renderPlayers();renderTeams();}
@@ -216,7 +238,7 @@ function drawTeamsNumber(nTeams){
   show('teams');
   toast(nTeams===3?'3 equipas sorteadas':'2 equipas sorteadas');
 }
-function confirmAll(){players=players.map(p=>({...p,status:'confirmado'}));save();render();toast('Todos confirmados');}
+function confirmAll(){toast('Função removida');}
 function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');players.push({id:Date.now(),name,type,status:'pendente',pontual:true});document.getElementById('newName').value='';save();render();toast('Jogador adicionado');}
 function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
 function resetApp(){if(!confirm('Repor plantel inicial?'))return;players=basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));teams=[];save();render();toast('Plantel reposto');}
