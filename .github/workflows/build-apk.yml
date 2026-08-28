@@ -1,10 +1,11 @@
-name: Build ChutaXuta Android APK
+name: Build ChutaXuta Android APK v1.43
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
+      - 'ChulaXuta_Android/**'
       - 'ChulaXuta_Android_Project.zip'
       - '.github/workflows/build-apk.yml'
 
@@ -20,34 +21,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate source ZIP
+      - name: Locate Android project
         shell: bash
         run: |
           set -euo pipefail
-          test -f ChulaXuta_Android_Project.zip || {
-            echo "ERRO: ChulaXuta_Android_Project.zip não existe na raiz do repositório."
-            exit 1
-          }
-          unzip -t ChulaXuta_Android_Project.zip
 
-      - name: Extract Android project
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf project
-          mkdir -p project
-          unzip -q ChulaXuta_Android_Project.zip -d project
+          # Opção preferida: projeto Android já está diretamente no repositório.
+          if [ -f "$GITHUB_WORKSPACE/ChulaXuta_Android/settings.gradle" ]; then
+            PROJECT_DIR="$GITHUB_WORKSPACE/ChulaXuta_Android"
 
-          PROJECT_DIR="$GITHUB_WORKSPACE/project/ChulaXuta_Android"
-          test -f "$PROJECT_DIR/settings.gradle" || {
-            echo "ERRO: settings.gradle não encontrado em $PROJECT_DIR"
-            echo "Conteúdo extraído:"
-            find project -maxdepth 5 -print
+          # Compatibilidade: se só existir o ZIP Android, extrai-o.
+          elif [ -f "$GITHUB_WORKSPACE/ChulaXuta_Android_Project.zip" ]; then
+            rm -rf "$GITHUB_WORKSPACE/android_extract"
+            mkdir -p "$GITHUB_WORKSPACE/android_extract"
+            unzip -q "$GITHUB_WORKSPACE/ChulaXuta_Android_Project.zip" -d "$GITHUB_WORKSPACE/android_extract"
+
+            if [ -f "$GITHUB_WORKSPACE/android_extract/ChulaXuta_Android/settings.gradle" ]; then
+              PROJECT_DIR="$GITHUB_WORKSPACE/android_extract/ChulaXuta_Android"
+            else
+              echo "ERRO: O ZIP existe mas não contém ChulaXuta_Android/settings.gradle"
+              find "$GITHUB_WORKSPACE/android_extract" -maxdepth 5 -print
+              exit 1
+            fi
+          else
+            echo "ERRO: Projeto Android não encontrado."
+            echo "Esperado: ChulaXuta_Android/settings.gradle"
+            echo "ou: ChulaXuta_Android_Project.zip"
+            echo "Conteúdo da raiz:"
+            find "$GITHUB_WORKSPACE" -maxdepth 3 -print | sort
             exit 1
-          }
+          fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Projeto Android encontrado em: $PROJECT_DIR"
+          echo "Projeto Android: $PROJECT_DIR"
+          test -f "$PROJECT_DIR/settings.gradle"
+          test -f "$PROJECT_DIR/app/build.gradle"
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -63,7 +71,7 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build debug APK
+      - name: Build APK
         shell: bash
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
@@ -75,19 +83,19 @@ jobs:
         run: |
           set -euo pipefail
           APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
-          test -f "$APK" || {
+          if [ ! -f "$APK" ]; then
             echo "ERRO: APK não encontrada em $APK"
             find "$PROJECT_DIR/app/build" -maxdepth 8 -type f -print || true
             exit 1
-          }
+          fi
           mkdir -p output
-          cp "$APK" output/ChutaXuta-v1.42-debug.apk
-          ls -lh output/ChutaXuta-v1.42-debug.apk
+          cp "$APK" output/ChutaXuta-v1.43-debug.apk
+          ls -lh output/ChutaXuta-v1.43-debug.apk
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.42-APK
-          path: output/ChutaXuta-v1.42-debug.apk
+          name: ChutaXuta-v1.43-APK
+          path: output/ChutaXuta-v1.43-debug.apk
           if-no-files-found: error
           retention-days: 30
