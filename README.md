@@ -49,3 +49,10 @@ https://ruijpedro.github.io/Chuta/
 - Tem pop-up antes de alterar presença.
 - Sorteia 2 equipas por defeito.
 - Sorteia 3 equipas a pedido.
+
+## v1.42 — Presenças e reset semanal
+- Coluna Google Sheets usada: `Estatística` (a API também aceita a chave `estatistica`).
+- Ao passar um jogador de outro estado para Confirmado, soma 1 presença, no máximo uma vez por ciclo semanal neste dispositivo.
+- O reset semanal muda às quintas-feiras às 23:30, limpa os estados do jogo, equipas e jogadores pontuais, mas não apaga a Estatística.
+- Se a app estiver fechada às 23:30, o reset é aplicado na primeira abertura/regresso ao primeiro plano.
+- Os popups de confirmação foram mantidos.
