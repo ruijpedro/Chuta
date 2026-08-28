@@ -81,13 +81,13 @@ jobs:
             exit 1
           }
           mkdir -p output
-          cp "$APK" output/ChutaXuta-v1.3-debug.apk
-          ls -lh output/ChutaXuta-v1.3-debug.apk
+          cp "$APK" output/ChutaXuta-v1.42-debug.apk
+          ls -lh output/ChutaXuta-v1.42-debug.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.3-APK
-          path: output/ChutaXuta-v1.3-debug.apk
+          name: ChutaXuta-v1.42-APK
+          path: output/ChutaXuta-v1.42-debug.apk
           if-no-files-found: error
           retention-days: 30
