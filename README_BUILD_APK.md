@@ -1,15 +1,22 @@
-# Compilar a APK do ChutaXuta
+# ChutaXuta v1.42 — Build APK
 
-1. Extrair este ZIP no computador.
-2. Carregar **todo o conteúdo interior** para a raiz do repositório GitHub, incluindo a pasta oculta `.github`.
-3. Confirmar que existe `.github/workflows/build-apk.yml` e que já não contém `xargs dirname`.
-4. Abrir **Actions → Build ChutaXuta Android APK → Run workflow**.
-5. No fim, descarregar o artefacto `ChutaXuta-v1.3-APK`. O GitHub entrega os artefactos num ZIP; dentro estará `ChutaXuta-v1.3-debug.apk`.
+Esta versão inclui duas formas de compilação para evitar os erros anteriores:
 
-O workflow usa diretamente `project/ChulaXuta_Android` e não executa `find | xargs dirname`.
+1. `ChulaXuta_Android/` está diretamente na raiz do repositório e é a opção preferida.
+2. `ChulaXuta_Android_Project.zip` fica também incluído como compatibilidade.
 
-## Confirmações e reset semanal
-- Os botões Confirmar, Pendente e Não Vai apresentam uma janela de confirmação (popup).
-- O reset semanal ocorre à quinta-feira às 23:30.
-- Se a aplicação estiver fechada, o reset ocorre na primeira abertura após essa hora.
-- A app volta a verificar o reset quando regressa ao primeiro plano e a cada minuto enquanto permanece aberta.
+O workflow `.github/workflows/build-apk.yml` **não usa `dirname`, `xargs` nem procura o projeto dentro de um ZIP exterior**.
+
+## Para atualizar o GitHub
+
+Extrair este ZIP no computador e enviar **o conteúdo interior** para a raiz do repositório, substituindo os ficheiros existentes.
+
+Na raiz do GitHub devem ficar visíveis:
+
+- `.github/`
+- `ChulaXuta_Android/`
+- `ChulaXuta_Android_Project.zip`
+- `web/`
+- `README.md`
+
+Depois executar: Actions → `Build ChutaXuta Android APK v1.42` → Run workflow.
