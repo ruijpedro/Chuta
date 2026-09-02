@@ -79,7 +79,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
 <p class="hint" style="text-align:center;margin:8px 0 0;">Atualiza presenças entre telemóveis</p>
     </div>
     <div class="panel" style="padding:10px;">
-      <button class="mainbtn blue" onclick="syncSheets()">🔄 Sincronizar</button>
+      
     </div>
     <div class="panel">
       <div class="section-title">Convocatória</div>
@@ -462,5 +462,9 @@ document.addEventListener('visibilitychange', function(){
 });
 window.addEventListener('focus', verificarCicloSemanal);
 </script>
+
+<div id="syncStatus" aria-live="polite" style="position:fixed;right:12px;bottom:10px;z-index:9999;font-size:11px;padding:6px 9px;border-radius:999px;background:rgba(15,23,42,.78);color:#dbeafe;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.2)">✓ Sincronizado</div>
+
+\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V144 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.44] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','jantar','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
 </body>
 </html>

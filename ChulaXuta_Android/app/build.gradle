@@ -8,7 +8,7 @@ android {
         applicationId 'com.rjp.chulaxuta'
         minSdk 23
         targetSdk 35
-        versionCode 143
-        versionName '1.43'
+        versionCode 144
+        versionName "1.44"
     }
 }
