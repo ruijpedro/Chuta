@@ -1,0 +1,49 @@
+name: Build ChutaXuta iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ChutaXuta_iOS/**'
+      - '.github/workflows/build-ios.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Build for iOS Simulator
+        run: |
+          cd ChutaXuta_iOS
+          xcodebuild \
+            -project ChutaXuta.xcodeproj \
+            -scheme ChutaXuta \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package Simulator App
+        run: |
+          cd ChutaXuta_iOS
+          APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" ChutaXuta-iOS-1.45-Simulator.zip
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChutaXuta-iOS-1.45-Simulator
+          path: ChutaXuta_iOS/ChutaXuta-iOS-1.45-Simulator.zip
+          if-no-files-found: error
