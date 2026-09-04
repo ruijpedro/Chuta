@@ -62,3 +62,7 @@ https://ruijpedro.github.io/Chuta/
 - Novo separador `Estat.` com ranking acumulado de presenças.
 - Mantém a coluna `Estatística` do Google Sheets.
 - Reset semanal mantém-se à quinta-feira às 23:30 e não apaga o acumulado.
+
+## Android APK + iOS sideload gratuito
+
+Foi acrescentado o workflow **Build ChutaXuta Android + iOS Sideload**. Ele gera uma APK Android e um IPA iOS sem assinatura para instalação através de AltStore, SideStore ou Sideloadly. Ver `IOS_SIDELOAD_GRATUITO.md`.
