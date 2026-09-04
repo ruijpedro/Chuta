@@ -1,4 +1,4 @@
-name: Build ChutaXuta iOS
+name: Build ChutaXuta iOS Sideload IPA
 
 on:
   workflow_dispatch:
@@ -22,28 +22,44 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - name: Build for iOS Simulator
+      - name: Build unsigned iPhone app
+        shell: bash
         run: |
+          set -euo pipefail
           cd ChutaXuta_iOS
+          rm -rf build Payload
           xcodebuild \
             -project ChutaXuta.xcodeproj \
             -scheme ChutaXuta \
             -configuration Release \
-            -sdk iphonesimulator \
+            -sdk iphoneos \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
             build
 
-      - name: Package Simulator App
+      - name: Create sideload IPA
+        shell: bash
         run: |
+          set -euo pipefail
           cd ChutaXuta_iOS
-          APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)
-          test -n "$APP"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" ChutaXuta-iOS-1.45-Simulator.zip
+          APP="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$APP" ]; then
+            echo "ERRO: .app iPhoneOS não encontrada"
+            find build/Build/Products -maxdepth 3 -print || true
+            exit 1
+          fi
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP" Payload/ChutaXuta.app
+          /usr/bin/zip -qry ChutaXuta-v1.45-unsigned.ipa Payload
+          test -f ChutaXuta-v1.45-unsigned.ipa
+          unzip -l ChutaXuta-v1.45-unsigned.ipa | head -30
 
-      - name: Upload iOS build
+      - name: Upload unsigned IPA for AltStore SideStore Sideloadly
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-iOS-1.45-Simulator
-          path: ChutaXuta_iOS/ChutaXuta-iOS-1.45-Simulator.zip
+          name: ChutaXuta-v1.45-iOS-Sideload
+          path: ChutaXuta_iOS/ChutaXuta-v1.45-unsigned.ipa
           if-no-files-found: error
