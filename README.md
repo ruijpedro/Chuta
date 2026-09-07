@@ -53,7 +53,7 @@ https://ruijpedro.github.io/Chuta/
 ## v1.42 — Presenças e reset semanal
 - Coluna Google Sheets usada: `Estatística` (a API também aceita a chave `estatistica`).
 - Ao passar um jogador de outro estado para Confirmado, soma 1 presença, no máximo uma vez por ciclo semanal neste dispositivo.
-- O reset semanal muda às quintas-feiras às 23:30, limpa os estados do jogo, equipas e jogadores pontuais, mas não apaga a Estatística.
+- O reset semanal muda às terças-feiras às 23:30, limpa os estados do jogo, equipas e jogadores pontuais, mas não apaga a Estatística.
 - Se a app estiver fechada às 23:30, o reset é aplicado na primeira abertura/regresso ao primeiro plano.
 - Os popups de confirmação foram mantidos.
 
@@ -61,7 +61,7 @@ https://ruijpedro.github.io/Chuta/
 ## v1.43 — Estatística visível
 - Novo separador `Estat.` com ranking acumulado de presenças.
 - Mantém a coluna `Estatística` do Google Sheets.
-- Reset semanal mantém-se à quinta-feira às 23:30 e não apaga o acumulado.
+- Reset semanal mantém-se à terça-feira às 23:30 e não apaga o acumulado.
 
 ## Android APK + iOS sideload gratuito
 

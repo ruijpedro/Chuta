@@ -58,7 +58,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     <div class="logo"><img src="logo.png" alt="Chuta Xuta" /></div>
     <div class="title">Chuta Xuta</div>
     <div class="sub">FUTEBOL CLUBE · LEIRIA · 2022</div>
-    <div class="date" id="gameDate">⚽ Quinta-feira</div>
+    <div class="date" id="gameDate">⚽ Terça-feira</div>
   </div>
 
   <div class="tabs">
@@ -103,7 +103,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
   <div id="stat" class="hide">
     <div class="panel">
       <div class="section-title">Estatística de presenças</div>
-      <p class="hint">Histórico acumulado. O reset semanal de quinta-feira às 23:30 limpa apenas o estado do jogo e não apaga estas presenças.</p>
+      <p class="hint">Histórico acumulado. O reset semanal de terça-feira às 23:30 limpa apenas o estado do jogo e não apaga estas presenças.</p>
       <div class="stats" style="margin-top:12px">
         <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Presenças</div></div>
         <div class="stat"><div class="num" id="statPlayers">0</div><div class="lbl">Jogadores</div></div>
@@ -133,7 +133,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     </div>
     <div class="panel">
       <div class="section-title">Notificação do jogo</div>
-      <p class="hint">Agenda uma notificação para a próxima quinta-feira às 18:00, para lembrar a confirmação de presença.</p>
+      <p class="hint">Agenda uma notificação para a próxima terça-feira às 18:00, para lembrar a confirmação de presença.</p>
       <button class="mainbtn" onclick="scheduleReminder()">🔔 Ativar notificação</button>
       <button class="mainbtn red" onclick="resetApp()">Limpar dados e repor plantel</button>
     </div>
@@ -171,13 +171,13 @@ let teams=JSON.parse(localStorage.getItem('cx_normal_teams')||'[]');
 
 function save(){localStorage.setItem('cx_normal_players',JSON.stringify(players));localStorage.setItem('cx_normal_teams',JSON.stringify(teams));}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800)}
-function nextThursday(){
+function nextTuesday(){
   const now=new Date();
   const day=now.getDay();
 
-  // Quinta-feira até às 23:29:59 mantém o jogo desse dia.
-  // A partir das 23:30 assume já o jogo da quinta-feira seguinte.
-  if(day===4){
+  // Terça-feira até às 23:29:59 mantém o jogo desse dia.
+  // A partir das 23:30 assume já o jogo da terça-feira seguinte.
+  if(day===2){
     const limite=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,30,0,0);
     if(now<limite){
       return new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
@@ -185,7 +185,7 @@ function nextThursday(){
   }
 
   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
-  let add=(4-day+7)%7;
+  let add=(2-day+7)%7;
 
   if(add===0){add=7;}
 
@@ -193,7 +193,7 @@ function nextThursday(){
   return d;
 }
 function setDate(){
-  const d=nextThursday();
+  const d=nextTuesday();
   const texto=d.toLocaleDateString('pt-PT',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
   document.getElementById('gameDate').textContent='⚽ Jogo · '+texto;
 }
@@ -286,7 +286,7 @@ function abrirWhatsApp(txt){
 
 function message(){const c=players.filter(p=>p.status==='confirmado');let msg='⚽ CHUTA XUTA - Convocatória\n';msg+='Confirmados: '+c.length+'\n\n';if(teams.length){teams.forEach((t,i)=>{msg+=(i===0?'🟢 VERDE':i===1?'🔴 VERMELHO':'🟡 AMARELA')+'\n';msg+=t.map((p,k)=>(k+1)+'. '+p.name).join('\n')+'\n\n';});}else{msg+=c.map((p,i)=>(i+1)+'. '+p.name).join('\n');}return msg;}
 function shareWhatsApp(){abrirWhatsApp(message());}
-function scheduleReminder(){const d=nextThursday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
+function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
 
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycby3L8XI894oQSWqac_cYcLxs5DeW8UbXYH86FI4BeZwFA8CJ2eMnRDEsR-P4lerhE1W/exec";
 
@@ -338,7 +338,10 @@ function syncSheets(){
           dinner: dinner,
           paid: old && old.paid ? true : false,
           pontual: old && old.pontual ? true : false,
-          estatistica: (String(r.estatistica ?? r['Estatística'] ?? r.estatística ?? '').trim()!=='' ? (Number(r.estatistica ?? r['Estatística'] ?? r.estatística)||0) : Number((old && old.estatistica)||0)),
+          estatistica: Math.max(
+            Number((old && old.estatistica)||0),
+            (String(r.estatistica ?? r['Estatística'] ?? r.estatística ?? '').trim()!=='' ? Number(r.estatistica ?? r['Estatística'] ?? r.estatística)||0 : 0)
+          ),
           presencaContadaKey: old && old.presencaContadaKey ? old.presencaContadaKey : ''
         });
       });
@@ -374,7 +377,8 @@ function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
     pagamento: tipo === "mes" ? "mês" : "jogo",
     jantar: "",
     estatistica: Math.max(0,Number(estatistica||0)),
-    estatistica_delta: somaPresenca ? 1 : 0
+    estatistica_delta: somaPresenca ? 1 : 0,
+    semana: gameKeyAtual()
   };
 
   try {
@@ -408,7 +412,7 @@ function normalizaTipo(v) {
 
 
 function gameKeyAtual(){
-  const d=nextThursday();
+  const d=nextTuesday();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
@@ -449,7 +453,7 @@ function resetSheetPresencas(){
 }
 
 // Verificação imediata, periódica e ao regressar à app.
-// Desta forma, o reset acontece às quintas-feiras às 23:30 se a app estiver aberta
+// Desta forma, o reset acontece às terças-feiras às 23:30 se a app estiver aberta
 // ou logo na primeira abertura/regresso ao primeiro plano após essa hora.
 function verificarCicloSemanal(){
   resetNovoJogoSeNecessario();
@@ -465,6 +469,6 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('focus', verificarCicloSemanal);
 </script>
 
-\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V144 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.44] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','jantar','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
+\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.46] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','jantar','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
 </body>
 </html>

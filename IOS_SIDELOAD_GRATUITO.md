@@ -33,4 +33,4 @@ O IPA é deliberadamente gerado sem assinatura. AltStore, SideStore ou Sideloadl
 
 A assinatura gratuita é temporária e normalmente exige renovação periódica (habitualmente 7 dias). O iOS também impõe limites a apps assinadas com uma conta gratuita. Isto é uma limitação da Apple, não da ChutaXuta.
 
-O Bundle ID do projeto é `pt.rjp.chutaxuta`. As funções ChutaXuta — Stat, Atualizar, atualização automática, popups, Google Sheets e reset semanal de quinta-feira às 23:30 — são as mesmas da v1.45 Android.
+O Bundle ID do projeto é `pt.rjp.chutaxuta`. As funções ChutaXuta — Stat, Atualizar, atualização automática, popups, Google Sheets e reset semanal de terça-feira às 23:30 — são as mesmas da v1.45 Android.

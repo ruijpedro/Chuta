@@ -140,7 +140,7 @@
 				INFOPLIST_FILE = ChutaXuta/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.45;
+				MARKETING_VERSION = 1.46;
 				PRODUCT_BUNDLE_IDENTIFIER = pt.rjp.chutaxuta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -161,7 +161,7 @@
 				INFOPLIST_FILE = ChutaXuta/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.45;
+				MARKETING_VERSION = 1.46;
 				PRODUCT_BUNDLE_IDENTIFIER = pt.rjp.chutaxuta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

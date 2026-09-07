@@ -8,7 +8,7 @@ Mantém:
 - botão **Atualizar**;
 - atualização automática em segundo plano lógico da WebApp enquanto a app está ativa;
 - sincronização ao abrir e ao regressar ao primeiro plano;
-- reset semanal à quinta-feira às 23:30;
+- reset semanal à terça-feira às 23:30;
 - se a app estiver fechada às 23:30, o reset pendente é executado na abertura seguinte;
 - Google Sheets / coluna `Estatística`;
 - partilha através da folha de partilha do iOS (incluindo WhatsApp quando instalado);
