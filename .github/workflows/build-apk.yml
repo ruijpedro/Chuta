@@ -1,4 +1,4 @@
-name: Build ChutaXuta Android APK v1.43
+name: Build ChutaXuta Android APK v1.49
 
 on:
   workflow_dispatch:
@@ -63,8 +63,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --version
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Setup Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
@@ -89,13 +95,13 @@ jobs:
             exit 1
           fi
           mkdir -p output
-          cp "$APK" output/ChutaXuta-v1.43-debug.apk
-          ls -lh output/ChutaXuta-v1.43-debug.apk
+          cp "$APK" output/ChutaXuta-v1.49-debug.apk
+          ls -lh output/ChutaXuta-v1.49-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.43-APK
-          path: output/ChutaXuta-v1.43-debug.apk
+          name: ChutaXuta-v1.49-APK
+          path: output/ChutaXuta-v1.49-debug.apk
           if-no-files-found: error
           retention-days: 30
