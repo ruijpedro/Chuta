@@ -290,85 +290,77 @@ function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window
 
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycby3L8XI894oQSWqac_cYcLxs5DeW8UbXYH86FI4BeZwFA8CJ2eMnRDEsR-P4lerhE1W/exec";
 
-function syncSheets(){
-  if(localStorage.getItem('cx_reset_pending')==='1'){toast("Reset a sincronizar...");return;}
-  toast("A sincronizar...");
-  const callbackName="cxSafeSync"+Date.now();
+function cycleKeyAtual(){ return gameKeyAtual(); }
 
+function ensureResetServidor(callback){
+  const cb="cxEnsureReset"+Date.now();
+  let done=false;
+  function finish(ok,resp){
+    if(done)return; done=true;
+    try{delete window[cb];}catch(e){}
+    const el=document.getElementById(cb); if(el&&el.parentNode)el.parentNode.removeChild(el);
+    callback(ok,resp||{});
+  }
+  window[cb]=function(resp){
+    if(resp && resp.ok===true){
+      if(resp.reset===true){
+        players=players.filter(p=>!p.pontual).map(p=>({...p,status:'pendente'}));
+        teams=[]; save(); render();
+        toast('Novo ciclo · presenças limpas');
+      }
+      localStorage.setItem('cx_game_key',cycleKeyAtual());
+      localStorage.removeItem('cx_reset_pending');
+      finish(true,resp);
+    }else{ localStorage.setItem('cx_reset_pending','1'); finish(false,resp); }
+  };
+  const sc=document.createElement('script'); sc.id=cb;
+  sc.onerror=function(){localStorage.setItem('cx_reset_pending','1');finish(false,{})};
+  sc.src=SHEETS_API_URL+'?action=ensure&cycle='+encodeURIComponent(cycleKeyAtual())+'&callback='+cb+'&t='+Date.now();
+  document.body.appendChild(sc);
+  setTimeout(()=>finish(false,{}),8000);
+}
+
+function syncSheets(){
+  toast("A sincronizar...");
+  ensureResetServidor(function(ok){
+    if(!ok){toast('Reset/sincronização pendente');return;}
+    carregarSheetsDepoisReset();
+  });
+}
+
+function carregarSheetsDepoisReset(){
+  const callbackName="cxSafeSync"+Date.now();
   window[callbackName]=function(data){
     try{
-      if(!Array.isArray(data)){
-        toast("Resposta inválida");
-        return;
-      }
-
-      const rows=data.filter(function(r){
-        return r && r.jogador && String(r.jogador).trim()!=="";
-      });
-
-      if(rows.length===0){
-        toast("Sem jogadores válidos");
-        return;
-      }
-
+      if(!Array.isArray(data)){toast("Resposta inválida");return;}
+      const rows=data.filter(r=>r && r.jogador && String(r.jogador).trim()!=="");
+      if(rows.length===0){toast("Sem jogadores válidos");return;}
       const oldPlayers=Array.isArray(players)?players:[];
-      const merged=[];
-
-      rows.forEach(function(r,i){
+      players=rows.map(function(r,i){
         const nome=String(r.jogador||"").trim();
-        const old=oldPlayers.find(function(p){
-          return String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase();
-        });
-
+        const old=oldPlayers.find(p=>String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase());
         const pres=String(r.presenca||"").trim().toUpperCase();
         let status="pendente";
-        if(pres==="SIM" || pres==="VOU" || pres==="CONFIRMADO"){status="confirmado";}
-        if(pres==="NÃO" || pres==="NAO" || pres==="NO"){status="nao";}
-
+        if(pres==="SIM"||pres==="VOU"||pres==="CONFIRMADO")status="confirmado";
+        if(pres==="NÃO"||pres==="NAO"||pres==="NO")status="nao";
         const pag=String(r.pagamento||"").trim().toLowerCase();
-        const type=(pag==="mês" || pag==="mes" || pag==="mensalidade")?"mes":"jogo";
-
-        const jan=String(r.jantar||"").trim().toUpperCase();
-        const dinner=(jan==="SIM" || jan==="VOU" || jan==="CONFIRMADO");
-
-        merged.push({
-          id: old && old.id ? old.id : Date.now()+i,
-          name: nome,
-          type: type,
-          status: status,
-          dinner: dinner,
-          paid: old && old.paid ? true : false,
-          pontual: old && old.pontual ? true : false,
-          estatistica: Math.max(
-            Number((old && old.estatistica)||0),
-            (String(r.estatistica ?? r['Estatística'] ?? r.estatística ?? '').trim()!=='' ? Number(r.estatistica ?? r['Estatística'] ?? r.estatística)||0 : 0)
-          ),
-          presencaContadaKey: old && old.presencaContadaKey ? old.presencaContadaKey : ''
-        });
+        const type=(pag==="mês"||pag==="mes"||pag==="mensalidade")?"mes":"jogo";
+        return {
+          id:old&&old.id?old.id:Date.now()+i,name:nome,type,status,
+          paid:old&&old.paid?true:false,pontual:old&&old.pontual?true:false,
+          estatistica:Math.max(Number((old&&old.estatistica)||0),Number(r.estatistica||0)),
+          presencaContadaKey:old&&old.presencaContadaKey?old.presencaContadaKey:''
+        };
       });
-
-      players=merged;
-      try{save();}catch(e){console.log("SAVE",e);}
-      try{render();}catch(e){console.log("RENDER",e);toast("Erro render: "+(e.message||e));return;}
-      toast("Sincronizado: "+players.length);
-    }catch(err){
-      console.log("SYNC",err);
-      toast("Erro dados: "+(err.message||err));
-    }
-
+      save(); render(); toast("Sincronizado: "+players.length);
+    }catch(err){console.log("SYNC",err);toast("Erro dados: "+(err.message||err));}
     try{delete window[callbackName];}catch(e){}
-    const el=document.getElementById(callbackName);
-    if(el && el.parentNode){el.parentNode.removeChild(el);}
+    const el=document.getElementById(callbackName);if(el&&el.parentNode)el.parentNode.removeChild(el);
   };
-
-  const s=document.createElement("script");
-  s.id=callbackName;
-  s.src=SHEETS_API_URL+"?callback="+callbackName+"&t="+Date.now();
-  s.onerror=function(){
-    toast("Erro de comunicação");
-    try{delete window[callbackName];}catch(e){}
-  };
-  document.body.appendChild(s);
+  const sc=document.createElement('script');sc.id=callbackName;
+  sc.src=SHEETS_API_URL+'?callback='+callbackName+'&t='+Date.now();
+  sc.onerror=function(){toast('Erro de comunicação');try{delete window[callbackName]}catch(e){}};
+  document.body.appendChild(sc);
 }
 
 function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
@@ -376,7 +368,6 @@ function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
     jogador: nome,
     presenca: status === "confirmado" ? "SIM" : (status === "nao" ? "NÃO" : ""),
     pagamento: tipo === "mes" ? "mês" : "jogo",
-    jantar: "",
     estatistica: Math.max(0,Number(estatistica||0)),
     estatistica_delta: somaPresenca ? 1 : 0,
     semana: gameKeyAtual()
@@ -418,66 +409,11 @@ function gameKeyAtual(){
 }
 
 function resetNovoJogoSeNecessario(){
-  const key=gameKeyAtual();
-  const oldKey=localStorage.getItem('cx_game_key');
-
-  if(!oldKey){
-    localStorage.setItem('cx_game_key',key);
-    return;
-  }
-
-  if(oldKey!==key || localStorage.getItem('cx_reset_pending')==='1'){
-    // Limpa imediatamente a APP/WebApp, mas só fecha o ciclo quando o Sheets confirmar.
-    players=players.filter(p=>!p.pontual).map(p=>({...p,status:'pendente',dinner:false}));
-    teams=[];
-    save();
-    render();
-    localStorage.setItem('cx_reset_pending','1');
-    resetSheetPresencas(key);
-  }
-}
-
-function resetSheetPresencas(novaKey){
-  try{
-    const cb='resetChuta_'+Date.now();
-    let terminou=false;
-    const limpar=function(){
-      try{delete window[cb];}catch(e){}
-      const el=document.getElementById(cb);
-      if(el && el.parentNode)el.parentNode.removeChild(el);
-    };
-    window[cb]=function(resp){
-      terminou=true;
-      limpar();
-      if(resp && resp.ok===true){
-        localStorage.setItem('cx_game_key',novaKey||gameKeyAtual());
-        localStorage.removeItem('cx_reset_pending');
-        toast('Novo jogo criado · presenças limpas');
-        // Só agora é seguro voltar a importar o Sheets.
-        setTimeout(syncSheets,500);
-      }else{
-        localStorage.setItem('cx_reset_pending','1');
-        toast('Reset pendente · a tentar novamente');
-      }
-    };
-    const s=document.createElement('script');
-    s.id=cb;
-    s.onerror=function(){
-      limpar();
-      localStorage.setItem('cx_reset_pending','1');
-    };
-    s.src=SHEETS_API_URL+'?action=reset&callback='+cb+'&t='+Date.now();
-    document.body.appendChild(s);
-    setTimeout(function(){
-      if(!terminou){
-        limpar();
-        localStorage.setItem('cx_reset_pending','1');
-      }
-    },8000);
-  }catch(e){
-    localStorage.setItem('cx_reset_pending','1');
-    console.log(e);
-  }
+  // O servidor é a autoridade do ciclo semanal. Isto evita que uma instalação nova
+  // aceite SIM/NÃO antigos antes de confirmar o reset da terça-feira às 23:30.
+  ensureResetServidor(function(ok){
+    if(ok){ setDate(); render(); }
+  });
 }
 
 // Verificação imediata, periódica e ao regressar à app.
@@ -497,6 +433,6 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('focus', verificarCicloSemanal);
 </script>
 
-\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.46] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','jantar','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
+\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.49] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
 </body>
 </html>

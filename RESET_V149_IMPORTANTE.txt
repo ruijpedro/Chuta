@@ -1,0 +1,8 @@
+CHUTAXUTA v1.49
+- Sem Jantar.
+- Todas as terças às 23:30 inicia novo ciclo.
+- Se App/WebApp estiver fechada, o servidor confirma o ciclo na primeira abertura.
+- Antes de importar presenças, App/WebApp pergunta ao Apps Script se o reset já foi feito.
+- Reset limpa apenas Presença.
+- Preserva Pagamento e Estatística.
+- Substituir Code.gs no Apps Script e criar Nova versão da implementação.
