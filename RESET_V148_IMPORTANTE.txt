@@ -1,0 +1,14 @@
+CHUTAXUTA v1.48 — RESET TOTAL
+
+Terça-feira às 23:30:
+- limpa Presença na App Android
+- limpa Presença na App iOS
+- limpa Presença na WebApp
+- limpa Presença e Jantar no Google Sheets
+- preserva Estatística acumulada e Pagamento
+
+IMPORTANTE — GOOGLE APPS SCRIPT
+O ficheiro AppsScript_Estatistica/Code.gs desta versão tem de ser colocado no projeto Apps Script ligado ao Web App e a implementação /exec tem de ser atualizada.
+Sem atualizar a implementação do Apps Script, a app não consegue obrigar o servidor antigo a executar a nova rotina.
+
+A v1.48 mantém um reset pendente se o Sheets não confirmar. Enquanto estiver pendente, bloqueia a importação dos SIM/NÃO antigos e tenta novamente a cada verificação do ciclo.

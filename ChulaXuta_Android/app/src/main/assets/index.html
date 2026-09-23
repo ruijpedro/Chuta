@@ -291,6 +291,7 @@ function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycby3L8XI894oQSWqac_cYcLxs5DeW8UbXYH86FI4BeZwFA8CJ2eMnRDEsR-P4lerhE1W/exec";
 
 function syncSheets(){
+  if(localStorage.getItem('cx_reset_pending')==='1'){toast("Reset a sincronizar...");return;}
   toast("A sincronizar...");
   const callbackName="cxSafeSync"+Date.now();
 
@@ -425,29 +426,56 @@ function resetNovoJogoSeNecessario(){
     return;
   }
 
-  if(oldKey!==key){
+  if(oldKey!==key || localStorage.getItem('cx_reset_pending')==='1'){
+    // Limpa imediatamente a APP/WebApp, mas só fecha o ciclo quando o Sheets confirmar.
     players=players.filter(p=>!p.pontual).map(p=>({...p,status:'pendente',dinner:false}));
     teams=[];
     save();
-    localStorage.setItem('cx_game_key',key);
-    resetSheetPresencas();
-    toast('Novo jogo criado');
+    render();
+    localStorage.setItem('cx_reset_pending','1');
+    resetSheetPresencas(key);
   }
 }
 
-function resetSheetPresencas(){
+function resetSheetPresencas(novaKey){
   try{
     const cb='resetChuta_'+Date.now();
-    window[cb]=function(){
+    let terminou=false;
+    const limpar=function(){
       try{delete window[cb];}catch(e){}
       const el=document.getElementById(cb);
       if(el && el.parentNode)el.parentNode.removeChild(el);
     };
+    window[cb]=function(resp){
+      terminou=true;
+      limpar();
+      if(resp && resp.ok===true){
+        localStorage.setItem('cx_game_key',novaKey||gameKeyAtual());
+        localStorage.removeItem('cx_reset_pending');
+        toast('Novo jogo criado · presenças limpas');
+        // Só agora é seguro voltar a importar o Sheets.
+        setTimeout(syncSheets,500);
+      }else{
+        localStorage.setItem('cx_reset_pending','1');
+        toast('Reset pendente · a tentar novamente');
+      }
+    };
     const s=document.createElement('script');
     s.id=cb;
+    s.onerror=function(){
+      limpar();
+      localStorage.setItem('cx_reset_pending','1');
+    };
     s.src=SHEETS_API_URL+'?action=reset&callback='+cb+'&t='+Date.now();
     document.body.appendChild(s);
+    setTimeout(function(){
+      if(!terminou){
+        limpar();
+        localStorage.setItem('cx_reset_pending','1');
+      }
+    },8000);
   }catch(e){
+    localStorage.setItem('cx_reset_pending','1');
     console.log(e);
   }
 }
