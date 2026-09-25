@@ -1,4 +1,4 @@
-name: Build ChutaXuta Android APK v1.49
+name: Build ChutaXuta Android APK v1.50
 
 on:
   workflow_dispatch:
@@ -16,7 +16,6 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,35 +24,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # Opção preferida: projeto Android já está diretamente no repositório.
           if [ -f "$GITHUB_WORKSPACE/ChulaXuta_Android/settings.gradle" ]; then
             PROJECT_DIR="$GITHUB_WORKSPACE/ChulaXuta_Android"
-
-          # Compatibilidade: se só existir o ZIP Android, extrai-o.
           elif [ -f "$GITHUB_WORKSPACE/ChulaXuta_Android_Project.zip" ]; then
             rm -rf "$GITHUB_WORKSPACE/android_extract"
             mkdir -p "$GITHUB_WORKSPACE/android_extract"
             unzip -q "$GITHUB_WORKSPACE/ChulaXuta_Android_Project.zip" -d "$GITHUB_WORKSPACE/android_extract"
-
             if [ -f "$GITHUB_WORKSPACE/android_extract/ChulaXuta_Android/settings.gradle" ]; then
               PROJECT_DIR="$GITHUB_WORKSPACE/android_extract/ChulaXuta_Android"
             else
-              echo "ERRO: O ZIP existe mas não contém ChulaXuta_Android/settings.gradle"
+              echo "ERRO: O ZIP não contém ChulaXuta_Android/settings.gradle"
               find "$GITHUB_WORKSPACE/android_extract" -maxdepth 5 -print
               exit 1
             fi
           else
             echo "ERRO: Projeto Android não encontrado."
-            echo "Esperado: ChulaXuta_Android/settings.gradle"
-            echo "ou: ChulaXuta_Android_Project.zip"
-            echo "Conteúdo da raiz:"
             find "$GITHUB_WORKSPACE" -maxdepth 3 -print | sort
             exit 1
           fi
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Projeto Android: $PROJECT_DIR"
           test -f "$PROJECT_DIR/settings.gradle"
           test -f "$PROJECT_DIR/app/build.gradle"
 
@@ -63,14 +52,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Prepare Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --version
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Setup Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
@@ -89,19 +72,15 @@ jobs:
         run: |
           set -euo pipefail
           APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
-          if [ ! -f "$APK" ]; then
-            echo "ERRO: APK não encontrada em $APK"
-            find "$PROJECT_DIR/app/build" -maxdepth 8 -type f -print || true
-            exit 1
-          fi
+          test -f "$APK" || { echo "ERRO: APK não encontrada"; exit 1; }
           mkdir -p output
-          cp "$APK" output/ChutaXuta-v1.49-debug.apk
-          ls -lh output/ChutaXuta-v1.49-debug.apk
+          cp "$APK" output/ChutaXuta-v1.50-debug.apk
+          ls -lh output/ChutaXuta-v1.50-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.49-APK
-          path: output/ChutaXuta-v1.49-debug.apk
+          name: ChutaXuta-v1.50-APK
+          path: output/ChutaXuta-v1.50-debug.apk
           if-no-files-found: error
           retention-days: 30

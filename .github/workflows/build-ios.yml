@@ -53,13 +53,13 @@ jobs:
           rm -rf Payload
           mkdir -p Payload
           cp -R "$APP" Payload/ChutaXuta.app
-          /usr/bin/zip -qry ChutaXuta-v1.49-unsigned.ipa Payload
-          test -f ChutaXuta-v1.49-unsigned.ipa
-          unzip -l ChutaXuta-v1.49-unsigned.ipa | head -30
+          /usr/bin/zip -qry ChutaXuta-v1.50-unsigned.ipa Payload
+          test -f ChutaXuta-v1.50-unsigned.ipa
+          unzip -l ChutaXuta-v1.50-unsigned.ipa | head -30
 
       - name: Upload unsigned IPA for AltStore SideStore Sideloadly
         uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.49-iOS-Sideload
-          path: ChutaXuta_iOS/ChutaXuta-v1.49-unsigned.ipa
+          name: ChutaXuta-v1.50-iOS-Sideload
+          path: ChutaXuta_iOS/ChutaXuta-v1.50-unsigned.ipa
           if-no-files-found: error

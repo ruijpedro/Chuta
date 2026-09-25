@@ -29,11 +29,11 @@ jobs:
           mkdir -p ../dist-android
           APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' -print -quit)"
           test -n "$APK"
-          cp "$APK" ../dist-android/ChutaXuta-v1.49.apk
+          cp "$APK" ../dist-android/ChutaXuta-v1.50.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.49-Android-APK
-          path: dist-android/ChutaXuta-v1.49.apk
+          name: ChutaXuta-v1.50-Android-APK
+          path: dist-android/ChutaXuta-v1.50.apk
           if-no-files-found: error
 
   ios-sideload:
@@ -61,9 +61,9 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R "$APP" Payload/ChutaXuta.app
-          zip -qry ChutaXuta-v1.49-unsigned.ipa Payload
+          zip -qry ChutaXuta-v1.50-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: ChutaXuta-v1.49-iOS-Sideload-IPA
-          path: ChutaXuta_iOS/ChutaXuta-v1.49-unsigned.ipa
+          name: ChutaXuta-v1.50-iOS-Sideload-IPA
+          path: ChutaXuta_iOS/ChutaXuta-v1.50-unsigned.ipa
           if-no-files-found: error
