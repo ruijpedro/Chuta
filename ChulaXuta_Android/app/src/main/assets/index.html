@@ -322,47 +322,55 @@ function ensureResetServidor(callback){
 
 function syncSheets(){
   toast("A sincronizar...");
-  ensureResetServidor(function(ok){
-    if(!ok){toast('Reset/sincronização pendente');return;}
-    carregarSheetsDepoisReset();
+  return new Promise(function(resolve,reject){
+    ensureResetServidor(function(ok,resp){
+      if(!ok){
+        const st=document.getElementById('syncStatus');
+        if(st)st.textContent=navigator.onLine?'Reset pendente · nova tentativa automática':'Sem ligação';
+        return reject(new Error('reset_pending'));
+      }
+      carregarSheetsDepoisReset().then(resolve).catch(reject);
+    });
   });
 }
 
 function carregarSheetsDepoisReset(){
-  const callbackName="cxSafeSync"+Date.now();
-  window[callbackName]=function(data){
-    try{
-      if(!Array.isArray(data)){toast("Resposta inválida");return;}
-      const rows=data.filter(r=>r && r.jogador && String(r.jogador).trim()!=="");
-      if(rows.length===0){toast("Sem jogadores válidos");return;}
-      const oldPlayers=Array.isArray(players)?players:[];
-      players=rows.map(function(r,i){
-        const nome=String(r.jogador||"").trim();
-        const old=oldPlayers.find(p=>String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase());
-        const pres=String(r.presenca||"").trim().toUpperCase();
-        let status="pendente";
-        if(pres==="SIM"||pres==="VOU"||pres==="CONFIRMADO")status="confirmado";
-        if(pres==="NÃO"||pres==="NAO"||pres==="NO")status="nao";
-        const pag=String(r.pagamento||"").trim().toLowerCase();
-        const type=(pag==="mês"||pag==="mes"||pag==="mensalidade")?"mes":"jogo";
-        return {
-          id:old&&old.id?old.id:Date.now()+i,name:nome,type,status,
-          paid:old&&old.paid?true:false,pontual:old&&old.pontual?true:false,
-          estatistica:Math.max(Number((old&&old.estatistica)||0),Number(r.estatistica||0)),
-          presencaContadaKey:old&&old.presencaContadaKey?old.presencaContadaKey:''
-        };
-      });
-      save(); render(); toast("Sincronizado: "+players.length);
-    }catch(err){console.log("SYNC",err);toast("Erro dados: "+(err.message||err));}
-    try{delete window[callbackName];}catch(e){}
-    const el=document.getElementById(callbackName);if(el&&el.parentNode)el.parentNode.removeChild(el);
-  };
-  const sc=document.createElement('script');sc.id=callbackName;
-  sc.src=SHEETS_API_URL+'?callback='+callbackName+'&t='+Date.now();
-  sc.onerror=function(){toast('Erro de comunicação');try{delete window[callbackName]}catch(e){}};
-  document.body.appendChild(sc);
+  return new Promise(function(resolve,reject){
+    const callbackName="cxSafeSync"+Date.now();
+    let done=false;
+    function cleanup(){try{delete window[callbackName];}catch(e){} const el=document.getElementById(callbackName);if(el&&el.parentNode)el.parentNode.removeChild(el);}
+    window[callbackName]=function(data){
+      if(done)return; done=true;
+      try{
+        const payload=Array.isArray(data)?{ok:true,data:data,cycle:cycleKeyAtual()}:data;
+        if(!payload || payload.ok===false || !Array.isArray(payload.data))throw new Error('Resposta inválida');
+        if(payload.cycle && String(payload.cycle)!==String(cycleKeyAtual()))throw new Error('Ciclo diferente');
+        const rows=payload.data.filter(r=>r && r.jogador && String(r.jogador).trim()!=="");
+        if(rows.length===0)throw new Error('Sem jogadores válidos');
+        const oldPlayers=Array.isArray(players)?players:[];
+        players=rows.map(function(r,i){
+          const nome=String(r.jogador||"").trim();
+          const old=oldPlayers.find(p=>String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase());
+          const pres=String(r.presenca||"").trim().toUpperCase();
+          let status="pendente";
+          if(pres==="SIM"||pres==="VOU"||pres==="CONFIRMADO")status="confirmado";
+          if(pres==="NÃO"||pres==="NAO"||pres==="NO")status="nao";
+          const pag=String(r.pagamento||"").trim().toLowerCase();
+          const type=(pag==="mês"||pag==="mes"||pag==="mensalidade")?"mes":"jogo";
+          return {id:old&&old.id?old.id:Date.now()+i,name:nome,type,status,paid:old&&old.paid?true:false,pontual:old&&old.pontual?true:false,estatistica:Math.max(Number((old&&old.estatistica)||0),Number(r.estatistica||0)),presencaContadaKey:old&&old.presencaContadaKey?old.presencaContadaKey:''};
+        });
+        localStorage.setItem('cx_game_key',cycleKeyAtual());
+        localStorage.removeItem('cx_reset_pending');
+        save(); render(); toast("Sincronizado: "+players.length); cleanup(); resolve(true);
+      }catch(err){cleanup(); reject(err);}
+    };
+    const sc=document.createElement('script');sc.id=callbackName;
+    sc.src=SHEETS_API_URL+'?action=list&cycle='+encodeURIComponent(cycleKeyAtual())+'&callback='+callbackName+'&t='+Date.now();
+    sc.onerror=function(){if(done)return;done=true;cleanup();reject(new Error('Erro de comunicação'));};
+    document.body.appendChild(sc);
+    setTimeout(function(){if(done)return;done=true;cleanup();reject(new Error('Timeout de sincronização'));},10000);
+  });
 }
-
 function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
   const payload = {
     jogador: nome,
@@ -433,6 +441,6 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('focus', verificarCicloSemanal);
 </script>
 
-\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.51] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
+\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.52] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
 </body>
 </html>

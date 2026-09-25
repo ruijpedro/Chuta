@@ -1,0 +1,8 @@
+ChutaXuta v1.52
+- Corrige estado contraditório “✓ Sincronizado” / “Reset/sincronização pendente”.
+- syncSheets passa a devolver Promise real: só mostra Sincronizado após confirmação do reset e leitura do Sheets.
+- GET list inclui cycle e o Apps Script garante o reset antes de devolver presenças.
+- Limpa cx_reset_pending após confirmação bem sucedida.
+- Mantém nova tentativa automática a cada 60 segundos se houver falha.
+- Android/iOS/WebApp alinhados. Sem Jantar.
+IMPORTANTE: substituir Code.gs e criar nova versão da implementação Web App no Apps Script mantendo o mesmo URL.
