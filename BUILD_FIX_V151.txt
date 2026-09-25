@@ -1,0 +1,9 @@
+ChutaXuta v1.51 — correção do GitHub Actions Android
+
+- Removido android-actions/setup-android@v3.
+- Não existe chamada manual a sdkmanager.
+- Usa o Android SDK pré-instalado no ubuntu-latest em /usr/local/lib/android/sdk.
+- Valida Android Platform 35 antes do build.
+- Java 17 + Gradle 8.10.2.
+- Android versionCode 151 / versionName 1.51.
+- Mantidos WebApp, iOS e Apps Script da v1.50.
