@@ -66,3 +66,11 @@ https://ruijpedro.github.io/Chuta/
 ## Android APK + iOS sideload gratuito
 
 Foi acrescentado o workflow **Build ChutaXuta Android + iOS Sideload**. Ele gera uma APK Android e um IPA iOS sem assinatura para instalação através de AltStore, SideStore ou Sideloadly. Ver `IOS_SIDELOAD_GRATUITO.md`.
+
+## V1.55 — sincronização simplificada
+- Apps Script V8 continua sem alterações.
+- Removido o pedido `action=ensure` antes de cada sincronização; o V8 já garante o ciclo no próprio GET.
+- Um único GET JSONP atualiza plantel, presença, pagamento e estatística a partir do servidor.
+- `cx_reset_pending` antigo deixa de bloquear a leitura.
+- Atualização automática mantém-se a cada 60 segundos, sem executar resets no cliente.
+- Android, iOS e WebApp usam o mesmo `index.html`.

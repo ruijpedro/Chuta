@@ -321,56 +321,63 @@ function ensureResetServidor(callback){
 }
 
 function syncSheets(){
+  // V1.55: uma única leitura é suficiente. O Apps Script V8 executa
+  // ensureWeeklyReset_() antes de devolver os dados, por isso o cliente
+  // não deve lançar um segundo pedido de reset antes de cada sincronização.
   toast("A sincronizar...");
-  return new Promise(function(resolve,reject){
-    ensureResetServidor(function(ok,resp){
-      if(!ok){
-        const st=document.getElementById('syncStatus');
-        if(st)st.textContent=navigator.onLine?'Reset pendente · nova tentativa automática':'Sem ligação';
-        return reject(new Error('reset_pending'));
-      }
-      carregarSheetsDepoisReset().then(resolve).catch(reject);
-    });
-  });
+  return carregarSheetsServidor();
 }
 
-function carregarSheetsDepoisReset(){
+function carregarSheetsServidor(){
   return new Promise(function(resolve,reject){
-    const callbackName="cxSafeSync"+Date.now();
+    const callbackName="cxSync155_"+Date.now()+"_"+Math.floor(Math.random()*100000);
     let done=false;
-    function cleanup(){try{delete window[callbackName];}catch(e){} const el=document.getElementById(callbackName);if(el&&el.parentNode)el.parentNode.removeChild(el);}
-    window[callbackName]=function(data){
-      if(done)return; done=true;
+    function cleanup(){
+      try{delete window[callbackName];}catch(e){}
+      const el=document.getElementById(callbackName);
+      if(el&&el.parentNode)el.parentNode.removeChild(el);
+    }
+    function fail(err){if(done)return;done=true;cleanup();reject(err instanceof Error?err:new Error(String(err||'Erro de sincronização')));}
+    window[callbackName]=function(payload){
+      if(done)return;
       try{
-        const payload=Array.isArray(data)?{ok:true,data:data,cycle:cycleKeyAtual()}:data;
-        if(!payload || payload.ok===false || !Array.isArray(payload.data))throw new Error('Resposta inválida');
-        const serverKey=String(payload.game_key||payload.cycle||'');
-        if(serverKey && serverKey!==String(cycleKeyAtual()))throw new Error('Ciclo diferente: '+serverKey);
-        if(serverKey){ localStorage.setItem('cx_game_key',serverKey); localStorage.removeItem('cx_reset_pending'); }
-        const rows=payload.data.filter(r=>r && r.jogador && String(r.jogador).trim()!=="");
-        if(rows.length===0)throw new Error('Sem jogadores válidos');
+        if(!payload || payload.ok!==true || !Array.isArray(payload.data)) throw new Error('Resposta inválida do servidor');
+        const serverKey=String(payload.game_key||'');
+        const localKey=String(gameKeyAtual());
+        if(!serverKey || serverKey!==localKey) throw new Error('Ciclo diferente: '+serverKey);
+        const rows=payload.data.filter(r=>r && String(r.jogador||'').trim()!=='');
+        if(!rows.length) throw new Error('Sem jogadores válidos');
+
         const oldPlayers=Array.isArray(players)?players:[];
         players=rows.map(function(r,i){
-          const nome=String(r.jogador||"").trim();
-          const old=oldPlayers.find(p=>String((p&&p.name)||"").trim().toLowerCase()===nome.toLowerCase());
-          const pres=String(r.presenca||"").trim().toUpperCase();
-          let status="pendente";
-          if(pres==="SIM"||pres==="VOU"||pres==="CONFIRMADO")status="confirmado";
-          if(pres==="NÃO"||pres==="NAO"||pres==="NO")status="nao";
-          const pag=String(r.pagamento||"").trim().toLowerCase();
-          const type=(pag==="mês"||pag==="mes"||pag==="mensalidade")?"mes":"jogo";
-          return {id:old&&old.id?old.id:Date.now()+i,name:nome,type,status,paid:old&&old.paid?true:false,pontual:old&&old.pontual?true:false,estatistica:Math.max(0,Number(r.estatistica||0)),presencaContadaKey:(status==='confirmado'?cycleKeyAtual():'')};
+          const nome=String(r.jogador||'').trim();
+          const old=oldPlayers.find(p=>String((p&&p.name)||'').trim().toLowerCase()===nome.toLowerCase());
+          const status=normalizaPresenca(r.presenca);
+          return {
+            id:old&&old.id?old.id:(Date.now()+i),
+            name:nome,
+            type:normalizaTipo(r.pagamento),
+            status:status,
+            paid:old&&old.paid?true:false,
+            pontual:false,
+            estatistica:Math.max(0,Number(r.estatistica||0)),
+            presencaContadaKey:status==='confirmado'?localKey:''
+          };
         });
-        localStorage.setItem('cx_game_key',cycleKeyAtual());
+
+        localStorage.setItem('cx_game_key',serverKey);
         localStorage.removeItem('cx_reset_pending');
-        save(); render(); toast("Sincronizado: "+players.length); cleanup(); resolve(true);
-      }catch(err){cleanup(); reject(err);}
+        localStorage.setItem('cx_client_version','1.55');
+        save(); render(); setDate();
+        done=true; cleanup(); toast('Sincronizado: '+players.length); resolve(true);
+      }catch(err){fail(err);}
     };
-    const sc=document.createElement('script');sc.id=callbackName;
-    sc.src=SHEETS_API_URL+'?action=list&cycle='+encodeURIComponent(cycleKeyAtual())+'&callback='+callbackName+'&t='+Date.now();
-    sc.onerror=function(){if(done)return;done=true;cleanup();reject(new Error('Erro de comunicação'));};
+    const sc=document.createElement('script');
+    sc.id=callbackName;
+    sc.onerror=function(){fail(new Error('Erro de comunicação'));};
+    sc.src=SHEETS_API_URL+'?action=list&callback='+encodeURIComponent(callbackName)+'&_v=155&t='+Date.now();
     document.body.appendChild(sc);
-    setTimeout(function(){if(done)return;done=true;cleanup();reject(new Error('Timeout de sincronização'));},10000);
+    setTimeout(function(){fail(new Error('Timeout de sincronização'));},10000);
   });
 }
 function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
@@ -419,31 +426,43 @@ function gameKeyAtual(){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-function resetNovoJogoSeNecessario(){
-  // O servidor é a autoridade do ciclo semanal. Isto evita que uma instalação nova
-  // aceite SIM/NÃO antigos antes de confirmar o reset da terça-feira às 23:30.
-  ensureResetServidor(function(ok){
-    if(ok){ setDate(); render(); }
-  });
-}
-
-// Verificação imediata, periódica e ao regressar à app.
-// Desta forma, o reset acontece às terças-feiras às 23:30 se a app estiver aberta
-// ou logo na primeira abertura/regresso ao primeiro plano após essa hora.
 function verificarCicloSemanal(){
-  resetNovoJogoSeNecessario();
+  // A mudança de data é local; o estado dos jogadores vem sempre do servidor.
   setDate();
   render();
 }
 
+// Migração V1.55: uma flag antiga nunca pode bloquear uma leitura nova.
+if(localStorage.getItem('cx_client_version')!=='1.55'){
+  localStorage.removeItem('cx_reset_pending');
+  localStorage.setItem('cx_client_version','1.55');
+}
 verificarCicloSemanal();
-setInterval(verificarCicloSemanal, 60 * 1000);
-document.addEventListener('visibilitychange', function(){
-  if(!document.hidden){verificarCicloSemanal();}
-});
-window.addEventListener('focus', verificarCicloSemanal);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){setDate();}});
+window.addEventListener('focus',setDate);
 </script>
 
-\n<script>\n/* CHUTAXUTA_AUTO_SYNC_V146 */\n(function(){\n  const INTERVAL=60000; let busy=false, last=0;\n  function status(t,s){const e=document.getElementById('syncStatus'); if(!e)return; e.textContent=t; e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}\n  function findSync(){for(const n of ['sincronizar','sincronizarTudo','syncData','syncAll','syncWithSheets','syncSheets','carregarDados','loadDataFromSheets','refreshData']){if(typeof window[n]==='function')return window[n].bind(window);} return null;}\n  async function run(reason){if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return; const fn=findSync(); if(!fn){status('Auto-sync indisponível','error');return;} busy=true; last=now; status('A sincronizar…','busy'); try{await Promise.resolve(fn()); if(localStorage.getItem('cx_reset_pending')){throw new Error('reset_pending');} status('✓ Sincronizado','ok');}catch(e){console.error('[ChutaXuta v1.54] sync',e); status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}finally{busy=false;}}\n  window.addEventListener('load',()=>setTimeout(()=>run('load'),700));\n  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),250);});\n  window.addEventListener('online',()=>setTimeout(()=>run('online'),250));\n  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);\n  document.addEventListener('click',ev=>{const el=ev.target&&ev.target.closest?ev.target.closest('button,[role="button"],input,select'):null;if(!el)return;const t=((el.textContent||'')+' '+(el.value||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();if(['confirm','não vai','nao vai','pendente','mensal','pago','caixa','equipa'].some(k=>t.includes(k)))setTimeout(()=>run('change'),900);},true);\n  window.chutaXutaAutoSync=()=>run('force');\n})();\n</script>\n
+
+<script>
+/* CHUTAXUTA_AUTO_SYNC_V155 */
+(function(){
+  const INTERVAL=60000; let busy=false,last=0;
+  function status(t,s){const e=document.getElementById('syncStatus');if(!e)return;e.textContent=t;e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}
+  async function run(reason){
+    if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return;
+    busy=true;last=now;status('A sincronizar…','busy');
+    try{await syncSheets();localStorage.removeItem('cx_reset_pending');status('✓ Sincronizado','ok');}
+    catch(e){console.error('[ChutaXuta v1.55] sync',e);status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}
+    finally{busy=false;}
+  }
+  window.addEventListener('load',()=>setTimeout(()=>run('load'),300));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>run('foreground'),150);});
+  window.addEventListener('focus',()=>setTimeout(()=>run('focus'),150));
+  window.addEventListener('online',()=>setTimeout(()=>run('online'),150));
+  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)run('interval');},INTERVAL);
+  window.chutaXutaAutoSync=()=>run('force');
+})();
+</script>
+
 </body>
 </html>
