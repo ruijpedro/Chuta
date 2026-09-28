@@ -288,7 +288,7 @@ function message(){const c=players.filter(p=>p.status==='confirmado');let msg='�
 function shareWhatsApp(){abrirWhatsApp(message());}
 function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
 
-const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycby3L8XI894oQSWqac_cYcLxs5DeW8UbXYH86FI4BeZwFA8CJ2eMnRDEsR-P4lerhE1W/exec";
+const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxibeWwySM09Om7klq6hmanqaYlz5IBUmBlkci9BkXMH_mnf7Ei1m4OXMnQWvUitg4V/exec";
 
 function cycleKeyAtual(){ return gameKeyAtual(); }
 
@@ -344,7 +344,9 @@ function carregarSheetsDepoisReset(){
       try{
         const payload=Array.isArray(data)?{ok:true,data:data,cycle:cycleKeyAtual()}:data;
         if(!payload || payload.ok===false || !Array.isArray(payload.data))throw new Error('Resposta inválida');
-        if(payload.cycle && String(payload.cycle)!==String(cycleKeyAtual()))throw new Error('Ciclo diferente');
+        const serverKey=String(payload.game_key||payload.cycle||'');
+        if(serverKey && serverKey!==String(cycleKeyAtual()))throw new Error('Ciclo diferente: '+serverKey);
+        if(serverKey){ localStorage.setItem('cx_game_key',serverKey); localStorage.removeItem('cx_reset_pending'); }
         const rows=payload.data.filter(r=>r && r.jogador && String(r.jogador).trim()!=="");
         if(rows.length===0)throw new Error('Sem jogadores válidos');
         const oldPlayers=Array.isArray(players)?players:[];
@@ -378,7 +380,8 @@ function enviarSheets(nome, status, tipo, estatistica, somaPresenca) {
     pagamento: tipo === "mes" ? "mês" : "jogo",
     estatistica: Math.max(0,Number(estatistica||0)),
     estatistica_delta: somaPresenca ? 1 : 0,
-    semana: gameKeyAtual()
+    semana: gameKeyAtual(),
+    game_key: gameKeyAtual()
   };
 
   try {

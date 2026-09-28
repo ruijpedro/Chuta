@@ -1,0 +1,8 @@
+ChutaXuta v1.53
+- App/WebApp/iOS adaptados ao Apps Script Versão 8 já implementado.
+- Endpoint atualizado para a implementação publicada em 28/09/2026.
+- Leitura do formato {ok:true, game_key:"YYYY-MM-DD", data:[...]}.
+- Validação de game_key antes de aplicar dados.
+- Limpeza de cx_reset_pending após resposta válida do servidor.
+- POST envia semana e game_key.
+- Não é necessário fazer nova implementação do Code.gs para esta atualização da app.
