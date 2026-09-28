@@ -1,0 +1,9 @@
+ChutaXuta v1.54
+
+- Google Sheets / Apps Script Version 8 é a fonte única de verdade para Presença, Pagamento e Estatística.
+- WebApp, Android e iOS usam exatamente o mesmo index.html.
+- Ao sincronizar, Estatística recebida do servidor substitui o valor local (deixou de usar Math.max(local, servidor)).
+- Presença e Pagamento já são substituídos pelos dados do servidor.
+- O estado ✓ Sincronizado só aparece depois de uma sincronização válida e sem reset pendente.
+- Mantém reset semanal terça-feira 23:30 e sincronização automática a cada 60 s.
+- Não é necessário alterar/reimplementar o Code.gs Versão 8.
