@@ -76,7 +76,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
       <div class="stat"><div class="num" id="cNo">0</div><div class="lbl">Não vão</div></div>
     </div>
     <div class="panel" style="padding:10px;">
-<button class="mainbtn blue" onclick="syncSheets()">🔄 Atualizar</button>
+<button class="mainbtn blue" onclick="window.chutaXutaAutoSync ? window.chutaXutaAutoSync() : syncSheets()">🔄 Atualizar</button>
 <p class="hint" style="text-align:center;margin:8px 0 0;">Atualização automática ativa · a cada 60 segundos</p>
 <div id="syncStatus" aria-live="polite" class="hint" style="text-align:center;margin:6px 0 0;">✓ Sincronizado</div>
     </div>
@@ -321,16 +321,23 @@ function ensureResetServidor(callback){
 }
 
 function syncSheets(){
-  // V1.55: uma única leitura é suficiente. O Apps Script V8 executa
-  // ensureWeeklyReset_() antes de devolver os dados, por isso o cliente
-  // não deve lançar um segundo pedido de reset antes de cada sincronização.
+  // V1.56: uma única rotina para WebApp, Android e iOS.
+  // O servidor V8 é a fonte de verdade e confirma o game_key antes de aplicar dados.
+  const el=document.getElementById('syncStatus');
+  if(el) el.textContent='A sincronizar…';
   toast("A sincronizar...");
-  return carregarSheetsServidor();
+  return carregarSheetsServidor().then(function(v){
+    if(el) el.textContent='✓ Sincronizado';
+    return v;
+  }).catch(function(err){
+    if(el) el.textContent=navigator.onLine?('⚠ Erro de sincronização · '+(err&&err.message?err.message:'sem resposta')):'Sem ligação';
+    throw err;
+  });
 }
 
 function carregarSheetsServidor(){
   return new Promise(function(resolve,reject){
-    const callbackName="cxSync155_"+Date.now()+"_"+Math.floor(Math.random()*100000);
+    const callbackName="cxSync156_"+Date.now()+"_"+Math.floor(Math.random()*100000);
     let done=false;
     function cleanup(){
       try{delete window[callbackName];}catch(e){}
@@ -367,7 +374,7 @@ function carregarSheetsServidor(){
 
         localStorage.setItem('cx_game_key',serverKey);
         localStorage.removeItem('cx_reset_pending');
-        localStorage.setItem('cx_client_version','1.55');
+        localStorage.setItem('cx_client_version','1.56');
         save(); render(); setDate();
         done=true; cleanup(); toast('Sincronizado: '+players.length); resolve(true);
       }catch(err){fail(err);}
@@ -433,9 +440,9 @@ function verificarCicloSemanal(){
 }
 
 // Migração V1.55: uma flag antiga nunca pode bloquear uma leitura nova.
-if(localStorage.getItem('cx_client_version')!=='1.55'){
+if(localStorage.getItem('cx_client_version')!=='1.56'){
   localStorage.removeItem('cx_reset_pending');
-  localStorage.setItem('cx_client_version','1.55');
+  localStorage.setItem('cx_client_version','1.56');
 }
 verificarCicloSemanal();
 document.addEventListener('visibilitychange',function(){if(!document.hidden){setDate();}});
@@ -444,7 +451,7 @@ window.addEventListener('focus',setDate);
 
 
 <script>
-/* CHUTAXUTA_AUTO_SYNC_V155 */
+/* CHUTAXUTA_AUTO_SYNC_V156 */
 (function(){
   const INTERVAL=60000; let busy=false,last=0;
   function status(t,s){const e=document.getElementById('syncStatus');if(!e)return;e.textContent=t;e.style.opacity=s==='error'?'1':s==='busy'?'.9':'.78';}
@@ -452,7 +459,7 @@ window.addEventListener('focus',setDate);
     if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return;
     busy=true;last=now;status('A sincronizar…','busy');
     try{await syncSheets();localStorage.removeItem('cx_reset_pending');status('✓ Sincronizado','ok');}
-    catch(e){console.error('[ChutaXuta v1.55] sync',e);status(navigator.onLine?'Erro de sincronização':'Sem ligação','error');}
+    catch(e){console.error('[ChutaXuta v1.56] sync',e);status(navigator.onLine?('⚠ Erro de sincronização · '+(e&&e.message?e.message:'sem resposta')):'Sem ligação','error');}
     finally{busy=false;}
   }
   window.addEventListener('load',()=>setTimeout(()=>run('load'),300));

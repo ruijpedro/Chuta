@@ -1,0 +1,7 @@
+CHUTA XUTA V1.56
+- Botão Atualizar usa a mesma rotina da sincronização automática.
+- Feedback restaurado: A sincronizar… -> ✓ Sincronizado.
+- ✓ Sincronizado só aparece após resposta válida do Apps Script V8 e game_key correto.
+- Em falha, mostra o motivo (comunicação, timeout, resposta inválida ou ciclo diferente).
+- WebApp, Android e iOS usam o mesmo index.html.
+- Apps Script V8 e Google Sheets não precisam de alterações.
