@@ -288,7 +288,7 @@ function message(){const c=players.filter(p=>p.status==='confirmado');let msg='�
 function shareWhatsApp(){abrirWhatsApp(message());}
 function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
 
-const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxibeWwySM09Om7klq6hmanqaYlz5IBUmBlkci9BkXMH_mnf7Ei1m4OXMnQWvUitg4V/exec";
+const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxibeWwySM09Om7klq6hmanqaYIz5IBUmBIkci9BkXMH_mnf7Ei1m4OXMnQWvUitg4V/exec";
 
 function cycleKeyAtual(){ return gameKeyAtual(); }
 
@@ -321,7 +321,7 @@ function ensureResetServidor(callback){
 }
 
 function syncSheets(){
-  // V1.56: uma única rotina para WebApp, Android e iOS.
+  // V1.57: uma única rotina para WebApp, Android e iOS.
   // O servidor V8 é a fonte de verdade e confirma o game_key antes de aplicar dados.
   const el=document.getElementById('syncStatus');
   if(el) el.textContent='A sincronizar…';
@@ -459,7 +459,7 @@ window.addEventListener('focus',setDate);
     if(busy)return; const now=Date.now(); if(reason!=='force'&&now-last<2500)return;
     busy=true;last=now;status('A sincronizar…','busy');
     try{await syncSheets();localStorage.removeItem('cx_reset_pending');status('✓ Sincronizado','ok');}
-    catch(e){console.error('[ChutaXuta v1.56] sync',e);status(navigator.onLine?('⚠ Erro de sincronização · '+(e&&e.message?e.message:'sem resposta')):'Sem ligação','error');}
+    catch(e){console.error('[ChutaXuta v1.57] sync',e);status(navigator.onLine?('⚠ Erro de sincronização · '+(e&&e.message?e.message:'sem resposta')):'Sem ligação','error');}
     finally{busy=false;}
   }
   window.addEventListener('load',()=>setTimeout(()=>run('load'),300));

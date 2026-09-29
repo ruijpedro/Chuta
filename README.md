@@ -74,3 +74,7 @@ Foi acrescentado o workflow **Build ChutaXuta Android + iOS Sideload**. Ele gera
 - `cx_reset_pending` antigo deixa de bloquear a leitura.
 - Atualização automática mantém-se a cada 60 segundos, sem executar resets no cliente.
 - Android, iOS e WebApp usam o mesmo `index.html`.
+
+
+## v1.57
+Corrigido o URL da implementação Apps Script V8 nos três clientes (Web, Android e iOS). O identificador anterior continha caracteres `l` no lugar de `I`, provocando `Erro de comunicação`. Mantém a sincronização manual e automática e o estado `A sincronizar… → ✓ Sincronizado`.
