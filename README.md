@@ -76,5 +76,11 @@ Foi acrescentado o workflow **Build ChutaXuta Android + iOS Sideload**. Ele gera
 - Android, iOS e WebApp usam o mesmo `index.html`.
 
 
-## v1.57
+## v1.58
 Corrigido o URL da implementação Apps Script V8 nos três clientes (Web, Android e iOS). O identificador anterior continha caracteres `l` no lugar de `I`, provocando `Erro de comunicação`. Mantém a sincronização manual e automática e o estado `A sincronizar… → ✓ Sincronizado`.
+
+
+## v1.58
+- Endpoint Apps Script V8 corrigido usando literalmente o URL confirmado pelo utilizador (`...qaYlz5...`).
+- WebApp, Android e iOS usam o mesmo endpoint.
+- Mantém A sincronizar… → ✓ Sincronizado após resposta válida.
