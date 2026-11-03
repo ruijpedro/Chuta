@@ -1,0 +1,73 @@
+name: ChutaXuta Android Release (assinatura permanente)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar segredos de assinatura
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Falta o secret $v"; exit 1; fi
+          done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Preparar chave e validar certificado
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/chutaxuta-release.jks"
+          test -s "$RUNNER_TEMP/chutaxuta-release.jks"
+          keytool -list -keystore "$RUNNER_TEMP/chutaxuta-release.jks" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+      - name: Compilar APK Release assinada
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -d "$ANDROID_HOME/platforms/android-35"
+          cd ChulaXuta_Android
+          gradle --no-daemon assembleRelease \
+            -PchutaKeystorePath="$RUNNER_TEMP/chutaxuta-release.jks" \
+            -PchutaStorePassword="$STORE_PASSWORD" \
+            -PchutaKeyAlias="$KEY_ALIAS" \
+            -PchutaKeyPassword="$KEY_PASSWORD"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -type f -print -quit)"
+          test -n "$APK"
+          mkdir -p ../dist-release
+          cp "$APK" ../dist-release/ChutaXuta-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose ../dist-release/ChutaXuta-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChutaXuta-Android-Release
+          path: dist-release/ChutaXuta-release.apk
+          if-no-files-found: error
