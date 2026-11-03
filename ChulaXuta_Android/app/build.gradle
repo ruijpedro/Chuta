@@ -11,4 +11,25 @@ android {
         versionCode 158
         versionName '1.58'
     }
+
+    // Só ativa a assinatura Release quando os quatro parâmetros estão presentes.
+    def signingPath = project.findProperty('chutaKeystorePath')
+    def signingStorePassword = project.findProperty('chutaStorePassword')
+    def signingAlias = project.findProperty('chutaKeyAlias')
+    def signingKeyPassword = project.findProperty('chutaKeyPassword')
+    if (signingPath && signingStorePassword && signingAlias && signingKeyPassword) {
+        signingConfigs {
+            release {
+                storeFile file(signingPath)
+                storePassword signingStorePassword.toString()
+                keyAlias signingAlias.toString()
+                keyPassword signingKeyPassword.toString()
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
 }
