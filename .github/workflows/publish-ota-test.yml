@@ -1,0 +1,26 @@
+name: Publicar OTA de TESTE ChutaXuta
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão OTA de teste'
+        required: true
+        default: '1.59.1'
+      confirm:
+        description: 'Escrever TESTAR'
+        required: true
+permissions:
+  contents: write
+jobs:
+  publish-test:
+    if: ${{ github.ref_name == 'main' && inputs.confirm == 'TESTAR' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preparar publicação isolada no ramo develop
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^1\.59\.[1-9][0-9]*$ ]]
+          gh workflow run publish-ota-test.yml --repo "${{ github.repository }}" --ref develop/chutaxuta-v1.59-ota -f version="$VERSION" -f confirm=TESTAR
