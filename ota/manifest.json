@@ -1,8 +1,8 @@
 {
   "appId": "com.rjp.chulaxuta",
-  "version": "1.59.1",
+  "version": "1.59.2",
   "minNativeVersion": "1.59.0",
-  "url": "https://github.com/ruijpedro/Chuta/releases/download/ota-v1.59.1/chutaxuta-ota-v1.59.1.zip",
-  "checksum": "8a84375ce9c32709afdc8053f202ae25034a8c71778573f3e0c28f079d0cce42",
+  "url": "https://github.com/ruijpedro/Chuta/releases/download/ota-v1.59.2/chutaxuta-ota-v1.59.2.zip",
+  "checksum": "2d033504788aec6a0575464c62b19f16c513d8947b83337536856d18497ac77b",
   "notes": "Atualização OTA de teste"
 }
