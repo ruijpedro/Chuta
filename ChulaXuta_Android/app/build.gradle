@@ -8,8 +8,8 @@ android {
         applicationId 'com.rjp.chulaxuta'
         minSdk 23
         targetSdk 35
-        versionCode 158
-        versionName '1.58'
+        versionCode 159
+        versionName '1.59.0'
     }
 
     // Só ativa a assinatura Release quando os quatro parâmetros estão presentes.
