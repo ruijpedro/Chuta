@@ -16,6 +16,8 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -36,7 +38,7 @@ public class MainActivity extends Activity {
                 File staged=OtaBundle.stage(this,m,current);
                 if(staged==null)return;
                 String version=m.getString("version");
-                p.edit().putString("active_version",version).apply();
+                p.edit().putString("previous_version",current).putString("active_version",version).apply();
                 runOnUiThread(()->{
                     if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.installed("+org.json.JSONObject.quote(version)+")",null);
                 });
@@ -78,7 +80,18 @@ public class MainActivity extends Activity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view,request,error);
+                if (Build.VERSION.SDK_INT >= 23 && request.isForMainFrame()
+                        && request.getUrl().toString().contains("/files/ota/staged-")) {
+                    SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
+                    String previous=p.getString("previous_version","");
+                    p.edit().putString("active_version",previous).remove("previous_version").apply();
+                    view.loadUrl(currentWebUrl());
+                }
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient());
         webView.addJavascriptInterface(new ChutaBridge(), "ChutaAndroid");
         webView.addJavascriptInterface(new ChutaBridge(), "ChutaBridge");
