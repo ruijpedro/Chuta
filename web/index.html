@@ -118,8 +118,9 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
 
   <div id="more" class="hide">
     <div class="panel">
-      <div class="section-title">Adicionar jogador pontual</div>
+      <div class="section-title">Adicionar jogador</div>
       <input class="input" id="newName" placeholder="Nome do jogador" />
+      <select class="select" id="newScope"><option value="jogo">Adicionar ao jogo</option><option value="plantel">Adicionar ao plantel</option></select>
       <select class="select" id="newType">
         <option value="jogo">Ao jogo</option>
         <option value="mes">Mensalidade</option>
@@ -180,7 +181,7 @@ function nextTuesday(){
   if(day===2){
     const limite=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,30,0,0);
     if(now<limite){
-      return new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
+      return new Date(now.getFullYear(),now.getMonth(),now.getDate(),22,0,0,0);
     }
   }
 
@@ -271,7 +272,7 @@ function drawTeamsNumber(nTeams){
   toast(nTeams===3?'3 equipas sorteadas':'2 equipas sorteadas');
 }
 function confirmAll(){toast('Função removida');}
-function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');if(players.some(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT')))return toast('Jogador já existe');players.push({id:Date.now(),name,type,status:'pendente',pontual:true,gameKey:String(gameKeyAtual())});document.getElementById('newName').value='';save();render();toast('Jogador adicionado');}
+function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');if(players.some(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT')))return toast('Jogador já existe');const scope=document.getElementById('newScope').value;players.push({id:Date.now(),name,type,status:'pendente',pontual:scope==='jogo',gameKey:scope==='jogo'?String(gameKeyAtual()):'',localPending:true});document.getElementById('newName').value='';save();render();toast(scope==='jogo'?'Adicionado a este jogo (neste dispositivo)':'Adicionado ao plantel local; aguarda sincronização com servidor');}
 function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true,gameKey:String(gameKeyAtual())}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
 function resetApp(){if(!confirm('Repor plantel inicial?'))return;players=basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));teams=[];save();render();toast('Plantel reposto');}
 
@@ -357,7 +358,7 @@ function carregarSheetsServidor(){
 
         const oldPlayers=Array.isArray(players)?players:[];
         // Os convidados pontuais pertencem apenas ao ciclo atual e não à folha permanente.
-        const convidados=oldPlayers.filter(p=>p && p.pontual===true && p.gameKey===localKey);
+        const convidados=oldPlayers.filter(p=>p && p.localPending===true && (p.pontual!==true || p.gameKey===localKey));
         players=rows.map(function(r,i){
           const nome=String(r.jogador||'').trim();
           const old=oldPlayers.find(p=>String((p&&p.name)||'').trim().toLowerCase()===nome.toLowerCase());
