@@ -24,6 +24,7 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           CONFIRM: ${{ inputs.confirm }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$CONFIRM" = "TESTAR"
@@ -34,8 +35,6 @@ jobs:
             echo "Release já existe; não substituir pacote publicado"
             exit 1
           fi
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Preparar bundle e checksum
         env:
           VERSION: ${{ inputs.version }}
