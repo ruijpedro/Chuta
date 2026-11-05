@@ -271,8 +271,8 @@ function drawTeamsNumber(nTeams){
   toast(nTeams===3?'3 equipas sorteadas':'2 equipas sorteadas');
 }
 function confirmAll(){toast('Função removida');}
-function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');players.push({id:Date.now(),name,type,status:'pendente',pontual:true});document.getElementById('newName').value='';save();render();toast('Jogador adicionado');}
-function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
+function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');if(players.some(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT')))return toast('Jogador já existe');players.push({id:Date.now(),name,type,status:'pendente',pontual:true,gameKey:String(gameKeyAtual())});document.getElementById('newName').value='';save();render();toast('Jogador adicionado');}
+function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true,gameKey:String(gameKeyAtual())}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
 function resetApp(){if(!confirm('Repor plantel inicial?'))return;players=basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));teams=[];save();render();toast('Plantel reposto');}
 
 function abrirWhatsApp(txt){
@@ -356,6 +356,8 @@ function carregarSheetsServidor(){
         if(!rows.length) throw new Error('Sem jogadores válidos');
 
         const oldPlayers=Array.isArray(players)?players:[];
+        // Os convidados pontuais pertencem apenas ao ciclo atual e não à folha permanente.
+        const convidados=oldPlayers.filter(p=>p && p.pontual===true && p.gameKey===localKey);
         players=rows.map(function(r,i){
           const nome=String(r.jogador||'').trim();
           const old=oldPlayers.find(p=>String((p&&p.name)||'').trim().toLowerCase()===nome.toLowerCase());
@@ -371,6 +373,8 @@ function carregarSheetsServidor(){
             presencaContadaKey:status==='confirmado'?localKey:''
           };
         });
+        const nomesFixos=new Set(players.map(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')));
+        players.push(...convidados.filter(p=>!nomesFixos.has(String(p.name||'').trim().toLocaleLowerCase('pt-PT'))));
 
         localStorage.setItem('cx_game_key',serverKey);
         localStorage.removeItem('cx_reset_pending');
