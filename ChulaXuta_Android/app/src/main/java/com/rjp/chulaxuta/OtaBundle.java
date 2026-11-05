@@ -12,15 +12,15 @@ import java.util.zip.ZipInputStream;
 
 /** Download e verificação do bundle OTA. Não altera a versão ativa sem validação. */
 final class OtaBundle {
-    static final String MANIFEST = com.rjp.chulaxuta.BuildConfig.DEBUG
-            ? "https://raw.githubusercontent.com/ruijpedro/Chuta/develop/chutaxuta-v1.59-ota/ota/manifest.json"
-            : "https://raw.githubusercontent.com/ruijpedro/Chuta/main/ota/manifest.json";
+    static final String TEST_MANIFEST = "https://raw.githubusercontent.com/ruijpedro/Chuta/develop/chutaxuta-v1.59-ota/ota/manifest.json";
+    static final String PROD_MANIFEST = "https://raw.githubusercontent.com/ruijpedro/Chuta/main/ota/manifest.json";
     static final String APP_ID = "com.rjp.chulaxuta";
     static final String NATIVE_VERSION = "1.59.0";
     private OtaBundle() {}
 
-    static JSONObject getManifest() throws Exception {
-        HttpURLConnection c = (HttpURLConnection)new URL(MANIFEST).openConnection();
+    static JSONObject getManifest(Context context) throws Exception {
+        boolean debug = (context.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        HttpURLConnection c = (HttpURLConnection)new URL(debug ? TEST_MANIFEST : PROD_MANIFEST).openConnection();
         c.setConnectTimeout(10000); c.setReadTimeout(15000);
         try (InputStream in = c.getInputStream()) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
