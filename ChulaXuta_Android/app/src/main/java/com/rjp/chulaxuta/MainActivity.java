@@ -55,12 +55,22 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient());
         webView.addJavascriptInterface(new ChutaBridge(), "ChutaAndroid");
+        webView.addJavascriptInterface(new ChutaBridge(), "ChutaBridge");
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
     }
 
 
     public class ChutaBridge {
+        @JavascriptInterface
+        public void restartApp() {
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    webView.clearHistory();
+                    webView.loadUrl("file:///android_asset/index.html");
+                }
+            });
+        }
         @JavascriptInterface
         public void shareWhatsApp(String text) {
             try {
