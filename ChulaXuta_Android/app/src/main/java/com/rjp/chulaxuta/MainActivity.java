@@ -32,7 +32,7 @@ public class MainActivity extends Activity {
     private void checkOtaAsync(){
         new Thread(()->{
             try {
-                org.json.JSONObject m=OtaBundle.getManifest();
+                org.json.JSONObject m=OtaBundle.getManifest(this);
                 SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
                 String current=p.getString("active_version",OtaBundle.NATIVE_VERSION);
                 File staged=OtaBundle.stage(this,m,current);
