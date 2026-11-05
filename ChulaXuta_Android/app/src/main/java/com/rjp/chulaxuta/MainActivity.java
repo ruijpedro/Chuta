@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.os.Bundle;
 import android.os.Build;
+import android.content.SharedPreferences;
+import java.io.File;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -17,6 +19,30 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private static final String OTA_PREFS = "cx_ota";
+    private String currentWebUrl() {
+        SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
+        String version=p.getString("active_version","");
+        if(!version.matches("[0-9]+\\.[0-9]+\\.[0-9]+"))return "file:///android_asset/index.html";
+        File file=new File(new File(new File(getFilesDir(),"ota"),"staged-"+version),"index.html");
+        return file.isFile()?"file://"+file.getAbsolutePath():"file:///android_asset/index.html";
+    }
+    private void checkOtaAsync(){
+        new Thread(()->{
+            try {
+                org.json.JSONObject m=OtaBundle.getManifest();
+                SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
+                String current=p.getString("active_version",OtaBundle.NATIVE_VERSION);
+                File staged=OtaBundle.stage(this,m,current);
+                if(staged==null)return;
+                String version=m.getString("version");
+                p.edit().putString("active_version",version).apply();
+                runOnUiThread(()->{
+                    if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.installed("+org.json.JSONObject.quote(version)+")",null);
+                });
+            }catch(Exception e){android.util.Log.w("ChutaOTA","Atualização não aplicada",e);}
+        },"Chuta-OTA").start();
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -57,7 +83,8 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new ChutaBridge(), "ChutaAndroid");
         webView.addJavascriptInterface(new ChutaBridge(), "ChutaBridge");
         setContentView(webView);
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl(currentWebUrl());
+        checkOtaAsync();
     }
 
 
@@ -67,7 +94,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (webView != null) {
                     webView.clearHistory();
-                    webView.loadUrl("file:///android_asset/index.html");
+                    webView.loadUrl(currentWebUrl());
                 }
             });
         }
