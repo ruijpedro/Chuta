@@ -26,6 +26,9 @@ public class MainActivity extends Activity {
         SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
         String version=p.getString("active_version","");
         if(!version.matches("[0-9]+\\.[0-9]+\\.[0-9]+"))return "file:///android_asset/index.html";
+        // Nunca usar um bundle OTA mais antigo do que a interface incluída na APK.
+        try { if(OtaBundle.compare(version, OtaBundle.NATIVE_VERSION) <= 0) return "file:///android_asset/index.html"; }
+        catch(Exception e) { return "file:///android_asset/index.html"; }
         File file=new File(new File(new File(getFilesDir(),"ota"),"staged-"+version),"index.html");
         return file.isFile()?"file://"+file.getAbsolutePath():"file:///android_asset/index.html";
     }
