@@ -5,7 +5,7 @@ on:
       version:
         description: 'Versão OTA de teste'
         required: true
-        default: '1.59.1'
+        default: '1.59.2'
       confirm:
         description: 'Escrever TESTAR'
         required: true
@@ -16,11 +16,75 @@ jobs:
     if: ${{ github.ref_name == 'main' && inputs.confirm == 'TESTAR' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Preparar publicação isolada no ramo develop
+      - uses: actions/checkout@v4
+        with:
+          ref: develop/chutaxuta-v1.59-ota
+          persist-credentials: true
+      - name: Validar autorização e versão
         env:
           VERSION: ${{ inputs.version }}
+          CONFIRM: ${{ inputs.confirm }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          test "$CONFIRM" = "TESTAR"
           [[ "$VERSION" =~ ^1\.59\.[1-9][0-9]*$ ]]
-          gh workflow run publish-ota-test.yml --repo "${{ github.repository }}" --ref develop/chutaxuta-v1.59-ota -f version="$VERSION" -f confirm=TESTAR
+          test -s web/index.html
+          python scripts/validate_ota_manifest.py
+          if gh release view "ota-v$VERSION" >/dev/null 2>&1; then
+            echo "Release já existe; não substituir pacote publicado"
+            exit 1
+          fi
+      - name: Preparar bundle e checksum
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p bundle
+          cp -a web/. bundle/
+          test -s bundle/index.html
+          # Marca visível apenas no pacote OTA de teste, sem alterar a APK base.
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('bundle/index.html')
+          s=p.read_text(encoding='utf-8')
+          assert '</body>' in s, 'HTML sem fecho de body'
+          version=os.environ['VERSION']
+          badge=(
+              '<div id="cx-ota-test-version" role="status" '
+              'style="position:fixed;top:8px;right:8px;z-index:99998;'
+              'background:#184a35;color:#fff;border:1px solid #42c884;'
+              'padding:5px 9px;border-radius:9px;font:700 11px Arial">'
+              'OTA TESTE '+version+'</div>'
+          )
+          p.write_text(s.replace('</body>',badge+'</body>',1),encoding='utf-8')
+          PY
+          (cd bundle && zip -qr "../chutaxuta-ota-v$VERSION.zip" .)
+          sha256sum "chutaxuta-ota-v$VERSION.zip"
+          echo "OTA_SHA=$(sha256sum "chutaxuta-ota-v$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Publicar Release de teste
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "ota-v$VERSION" "chutaxuta-ota-v$VERSION.zip" --title "ChutaXuta OTA TESTE $VERSION" --notes "Pacote de teste: não distribuir aos utilizadores da versão estável." --prerelease --target "$GITHUB_SHA"
+      - name: Atualizar manifesto somente no ramo de testes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('ota/manifest.json')
+          m=json.loads(p.read_text())
+          v=os.environ['VERSION']
+          m.update(version=v,minNativeVersion='1.59.0',url=f'https://github.com/ruijpedro/Chuta/releases/download/ota-v{v}/chutaxuta-ota-v{v}.zip',checksum=os.environ['OTA_SHA'],notes='Atualização OTA de teste')
+          p.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/validate_ota_manifest.py
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add ota/manifest.json
+          git commit -m "test(ota): publicar manifesto $VERSION"
+          git push origin HEAD:develop/chutaxuta-v1.59-ota
