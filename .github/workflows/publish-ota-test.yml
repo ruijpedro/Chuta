@@ -5,7 +5,7 @@ on:
       version:
         description: 'Versão OTA de teste'
         required: true
-        default: '1.59.2'
+        default: '1.59.3'
       confirm:
         description: 'Escrever TESTAR'
         required: true
