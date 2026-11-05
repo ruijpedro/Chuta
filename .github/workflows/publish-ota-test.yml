@@ -43,6 +43,23 @@ jobs:
           mkdir -p bundle
           cp -a web/. bundle/
           test -s bundle/index.html
+          # Marca visível apenas no pacote OTA de teste, sem alterar a APK base.
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('bundle/index.html')
+          s=p.read_text(encoding='utf-8')
+          assert '</body>' in s, 'HTML sem fecho de body'
+          version=os.environ['VERSION']
+          badge=(
+              '<div id="cx-ota-test-version" role="status" '
+              'style="position:fixed;top:8px;right:8px;z-index:99998;'
+              'background:#184a35;color:#fff;border:1px solid #42c884;'
+              'padding:5px 9px;border-radius:9px;font:700 11px Arial">'
+              'OTA TESTE '+version+'</div>'
+          )
+          p.write_text(s.replace('</body>',badge+'</body>',1),encoding='utf-8')
+          PY
           (cd bundle && zip -qr "../chutaxuta-ota-v$VERSION.zip" .)
           sha256sum "chutaxuta-ota-v$VERSION.zip"
           echo "OTA_SHA=$(sha256sum "chutaxuta-ota-v$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_ENV"
