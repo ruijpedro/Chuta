@@ -1,0 +1,40 @@
+name: Validar pacote OTA ChutaXuta (testes)
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop/chutaxuta-v1.59-ota]
+    paths:
+      - 'web/**'
+      - 'ota/**'
+      - 'scripts/validate_ota_manifest.py'
+      - '.github/workflows/validate-ota.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validar manifesto OTA
+        run: python scripts/validate_ota_manifest.py
+      - name: Empacotar recursos Web sem alterar a aplicação publicada
+        run: |
+          set -euo pipefail
+          test -s web/index.html
+          mkdir -p bundle
+          cp -a web/. bundle/
+          test -s bundle/index.html
+          cd bundle
+          zip -qr ../chutaxuta-web-ota-candidato.zip .
+          cd ..
+          sha256sum chutaxuta-web-ota-candidato.zip > chutaxuta-web-ota-candidato.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChutaXuta-OTA-CANDIDATO-NAO-INSTALAR
+          path: |
+            chutaxuta-web-ota-candidato.zip
+            chutaxuta-web-ota-candidato.sha256
+          retention-days: 14
