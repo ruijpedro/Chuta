@@ -476,5 +476,41 @@ window.addEventListener('focus',setDate);
 })();
 </script>
 
+
+<script>
+/* ChutaXuta OTA: interface de eventos do atualizador nativo.
+   A instalação só é declarada após confirmação do motor OTA Android. */
+(function(){
+  const key='cx_ota_installed_notice';
+  function aviso(msg){
+    const el=document.createElement('div');
+    el.setAttribute('role','status');
+    el.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;bottom:18px;max-width:540px;margin:auto;padding:16px;border-radius:16px;background:#173a2d;color:#fff;border:1px solid #42c884;box-shadow:0 8px 30px #0008;font:700 14px Arial,sans-serif;text-align:center';
+    el.textContent=msg;document.body.appendChild(el);
+    setTimeout(()=>el.remove(),6500);
+  }
+  window.chutaXutaOTA={
+    installed:function(version){
+      const v=String(version||'').trim();
+      if(!/^\\d+\\.\\d+\\.\\d+$/.test(v))return;
+      localStorage.setItem(key,v);
+      aviso('Nova atualização '+v+' instalada. A reiniciar a aplicação…');
+      setTimeout(function(){
+        if(window.ChutaBridge && typeof window.ChutaBridge.restartApp==='function'){
+          window.ChutaBridge.restartApp();
+        }else{
+          window.location.reload();
+        }
+      },1800);
+    },
+    failed:function(){console.warn('A atualização OTA não foi aplicada; mantida a versão anterior.');}
+  };
+  const done=localStorage.getItem(key);
+  if(done){
+    localStorage.removeItem(key);
+    window.addEventListener('load',function(){aviso('ChutaXuta atualizada para a versão '+done+'.');},{once:true});
+  }
+})();
+</script>
 </body>
 </html>
