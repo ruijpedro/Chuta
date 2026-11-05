@@ -36,13 +36,13 @@ public class MainActivity extends Activity {
                 SharedPreferences p=getSharedPreferences(OTA_PREFS,MODE_PRIVATE);
                 String current=p.getString("active_version",OtaBundle.NATIVE_VERSION);
                 File staged=OtaBundle.stage(this,m,current);
-                if(staged==null)return;
+                if(staged==null){runOnUiThread(()->{if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.upToDate&&window.chutaXutaOTA.upToDate()",null);});return;}
                 String version=m.getString("version");
                 p.edit().putString("previous_version",current).putString("active_version",version).apply();
                 runOnUiThread(()->{
                     if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.installed("+org.json.JSONObject.quote(version)+")",null);
                 });
-            }catch(Exception e){android.util.Log.w("ChutaOTA","Atualização não aplicada",e);}
+            }catch(Exception e){android.util.Log.w("ChutaOTA","Atualização não aplicada",e);runOnUiThread(()->{if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.failed&&window.chutaXutaOTA.failed()",null);});}
         },"Chuta-OTA").start();
     }
 
@@ -102,6 +102,13 @@ public class MainActivity extends Activity {
 
 
     public class ChutaBridge {
+        @JavascriptInterface public String getAppVersion() {
+            return getSharedPreferences(OTA_PREFS,MODE_PRIVATE).getString("active_version",OtaBundle.NATIVE_VERSION);
+        }
+        @JavascriptInterface public void checkAppUpdate() {
+            runOnUiThread(() -> { if(webView!=null)webView.evaluateJavascript("window.chutaXutaOTA&&window.chutaXutaOTA.checking&&window.chutaXutaOTA.checking()",null); });
+            checkOtaAsync();
+        }
         @JavascriptInterface
         public void restartApp() {
             runOnUiThread(() -> {
