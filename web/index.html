@@ -59,6 +59,10 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     <div class="title">Chuta Xuta</div>
     <div class="sub">FUTEBOL CLUBE · LEIRIA · 2022</div>
     <div class="date" id="gameDate">⚽ Terça-feira</div>
+    <div style="margin-top:9px;display:flex;justify-content:center;align-items:center;gap:9px;flex-wrap:wrap">
+      <button type="button" onclick="checkChutaAppUpdate()" style="border:1px solid #8aa0bd;background:#304663;color:#fff;border-radius:14px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">↻ Atualizar App</button>
+      <span id="cxAppVersion" style="font-size:12px;color:#c6d4e7">Versão: a verificar…</span>
+    </div>
   </div>
 
   <div class="tabs">
@@ -489,11 +493,23 @@ window.addEventListener('focus',setDate);
     el.textContent=msg;document.body.appendChild(el);
     setTimeout(()=>el.remove(),6500);
   }
+  function updateVersion(){
+    const el=document.getElementById("cxAppVersion");if(!el)return;
+    try{el.textContent="Versão: "+(window.ChutaBridge&&window.ChutaBridge.getAppVersion?window.ChutaBridge.getAppVersion():"WebApp");}catch(e){el.textContent="Versão: WebApp";}
+  }
+  window.checkChutaAppUpdate=function(){
+    if(window.ChutaBridge&&typeof window.ChutaBridge.checkAppUpdate==="function"){
+      window.ChutaBridge.checkAppUpdate();
+    }else{aviso("A atualização da WebApp é feita pelo navegador.");}
+  };
   window.chutaXutaOTA={
+    checking:function(){aviso("A procurar atualizações da aplicação…");},
+    upToDate:function(){updateVersion();aviso("A aplicação já está atualizada.");},
     installed:function(version){
       const v=String(version||'').trim();
       if(!/^\\d+\\.\\d+\\.\\d+$/.test(v))return;
       localStorage.setItem(key,v);
+      const ver=document.getElementById("cxAppVersion");if(ver)ver.textContent="Versão: "+v;
       aviso('Nova atualização '+v+' instalada. A reiniciar a aplicação…');
       setTimeout(function(){
         if(window.ChutaBridge && typeof window.ChutaBridge.restartApp==='function'){
@@ -503,8 +519,9 @@ window.addEventListener('focus',setDate);
         }
       },1800);
     },
-    failed:function(){console.warn('A atualização OTA não foi aplicada; mantida a versão anterior.');}
+    failed:function(){aviso("Não foi possível verificar ou instalar a atualização. Mantida a versão atual.");console.warn("A atualização OTA não foi aplicada; mantida a versão anterior.");}
   };
+  updateVersion();
   const done=localStorage.getItem(key);
   if(done){
     localStorage.removeItem(key);
