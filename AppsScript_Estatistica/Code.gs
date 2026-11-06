@@ -17,9 +17,61 @@ function list_(cycle){
  if(last>HEADER_ROW){const vals=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,4).getValues();vals.forEach(r=>{if(norm_(r[0]))data.push({jogador:norm_(r[0]),presenca:norm_(r[1]),pagamento:norm_(r[2]),estatistica:Number(r[3])||0});});}
  return {ok:true,cycle:cycle,data:data};
 }
+
+/* API v1.60: configuração e jogadores. Requer publicação de nova versão do Apps Script.
+   A API antiga mantém-se; nunca redefinir presenças por simples leitura de configuração. */
+const CX_CONFIG_SHEET='Configuracao';
+const CX_GUEST_SHEET='Jogadores_Jogo';
+function ensureExtraSheet_(name,header){
+ const ss=SpreadsheetApp.openById(CX_SHEET_ID);
+ let sh=ss.getSheetByName(name);
+ if(!sh){sh=ss.insertSheet(name);sh.appendRow(header);}
+ return sh;
+}
+function getConfig_(){
+ const sh=ensureExtraSheet_(CX_CONFIG_SHEET,['Chave','Valor']);
+ const vals=sh.getDataRange().getDisplayValues();
+ const row=vals.find(r=>r[0]==='game_datetime');
+ return {ok:true,game_datetime:row?row[1]:'',default_weekday:2,default_time:'22:00'};
+}
+function setConfig_(value){
+ if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(value))return {ok:false,error:'Data inválida'};
+ const sh=ensureExtraSheet_(CX_CONFIG_SHEET,['Chave','Valor']);
+ const vals=sh.getDataRange().getDisplayValues();
+ let idx=vals.findIndex(r=>r[0]==='game_datetime');
+ if(idx<0){sh.appendRow(['game_datetime',value]);}else{sh.getRange(idx+1,2).setNumberFormat('@').setValue(value);}
+ return getConfig_();
+}
+function listGuests_(cycle){
+ const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
+ const vals=sh.getDataRange().getDisplayValues().slice(1);
+ return vals.filter(r=>r[0]===cycle&&norm_(r[1])).map(r=>({jogador:r[1],pagamento:r[2],presenca:r[3],pontual:true}));
+}
+function addPlayerV2_(body){
+ const nome=norm_(body.jogador),tipo=norm_(body.pagamento)==='mes'?'mes':'jogo';
+ const scope=norm_(body.scope),cycle=norm_(body.cycle);
+ if(!nome||nome.length>100)return {ok:false,error:'Nome inválido'};
+ if(scope==='jogo'){
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(cycle))return {ok:false,error:'Ciclo inválido'};
+   const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
+   const vals=sh.getDataRange().getDisplayValues().slice(1);
+   if(vals.some(r=>r[0]===cycle&&norm_(r[1]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe neste jogo'};
+   sh.appendRow([cycle,nome,tipo,'pendente']);
+   return {ok:true,jogador:nome,scope:'jogo',cycle:cycle};
+ }
+ if(scope!=='plantel')return {ok:false,error:'Tipo de inscrição inválido'};
+ const sh=sheet_(),last=sh.getLastRow();
+ const names=last>HEADER_ROW?sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues():[];
+ if(names.some(r=>norm_(r[0]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe no plantel'};
+ sh.getRange(last+1,2,1,4).setValues([[nome,'pendente',tipo,0]]);
+ return {ok:true,jogador:nome,scope:'plantel'};
+}
+
 function doGet(e){
  const p=(e&&e.parameter)||{},action=norm_(p.action).toLowerCase(),cycle=norm_(p.cycle),lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
+  if(action==='config'){return jsonp_(getConfig_(),p.callback);}
+  if(action==='guests'){return jsonp_({ok:true,data:listGuests_(cycle)},p.callback);}
   if(action==='reset'){resetPresencas_();if(cycle)PropertiesService.getScriptProperties().setProperty('CX_RESET_CYCLE',cycle);return jsonp_({ok:true,cycle:cycle,reset:true},p.callback);}
   if(action==='ensure'){return jsonp_(ensureCycle_(cycle),p.callback);}
   if(action==='list'){
@@ -35,7 +87,10 @@ function doGet(e){
 function doPost(e){
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
-  const body=JSON.parse((e&&e.postData&&e.postData.contents)||'{}'),nome=norm_(body.jogador),semana=norm_(body.semana);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
+  const body=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
+  if(body.action==='set_config')return jsonp_(setConfig_(norm_(body.game_datetime)));
+  if(body.action==='add_player')return jsonp_(addPlayerV2_(body));
+  const nome=norm_(body.jogador),semana=norm_(body.semana);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
   if(semana){const en=ensureCycle_(semana);if(!en.ok)return jsonp_(en);}
   const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_({ok:false,error:'sem jogadores'});
   const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();let row=-1;
