@@ -75,8 +75,10 @@ function doGet(e){
   if(action==='reset'){resetPresencas_();if(cycle)PropertiesService.getScriptProperties().setProperty('CX_RESET_CYCLE',cycle);return jsonp_({ok:true,cycle:cycle,reset:true},p.callback);}
   if(action==='ensure'){return jsonp_(ensureCycle_(cycle),p.callback);}
   if(action==='list'){
-    const en=ensureCycle_(cycle);if(!en.ok)return jsonp_(en,p.callback);
-    const out=list_(cycle);out.reset=en.reset;return jsonp_(out,p.callback);
+    // Leitura nunca pode limpar presenças devido a relógios ou versões diferentes.
+    const cfg=getConfig_();
+    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):(cycle||norm_(PropertiesService.getScriptProperties().getProperty('CX_RESET_CYCLE')));
+    const out=list_(gameKey);out.game_key=gameKey;out.game_datetime=cfg.game_datetime;out.guests=listGuests_(gameKey);return jsonp_(out,p.callback);
   }
   // compatibilidade com versões antigas
   const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_([],p.callback);
@@ -91,7 +93,7 @@ function doPost(e){
   if(body.action==='set_config')return jsonp_(setConfig_(norm_(body.game_datetime)));
   if(body.action==='add_player')return jsonp_(addPlayerV2_(body));
   const nome=norm_(body.jogador),semana=norm_(body.semana);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
-  if(semana){const en=ensureCycle_(semana);if(!en.ok)return jsonp_(en);}
+  // Nunca fazer reset implícito ao receber confirmações de um cliente.
   const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_({ok:false,error:'sem jogadores'});
   const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();let row=-1;
   for(let i=0;i<names.length;i++)if(norm_(names[i][0]).toLowerCase()===nome.toLowerCase()){row=HEADER_ROW+1+i;break;}
