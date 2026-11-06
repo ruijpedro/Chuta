@@ -122,12 +122,19 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
 
   <div id="more" class="hide">
     <div class="panel">
-      <div class="section-title">Adicionar jogador</div>
+      <div class="section-title">Data e hora do jogo</div>
+      <p class="hint">Por defeito: terça-feira às 22:00. A alteração é guardada neste dispositivo até estar disponível a configuração partilhada no servidor.</p>
+      <input class="input" id="cxGameDateTime" type="datetime-local" aria-label="Data e hora do jogo" />
+      <button class="mainbtn blue" onclick="saveGameDateTime()">Guardar data e hora</button>
+      <button class="mainbtn" onclick="resetGameDateTime()">Repor terça-feira às 22:00</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Adicionar jogador</div><p class="hint">Ao plantel: jogador permanente. Ao jogo: convidado apenas para esta partida.</p>
       <input class="input" id="newName" placeholder="Nome do jogador" />
-      <select class="select" id="newScope"><option value="jogo">Adicionar ao jogo</option><option value="plantel">Adicionar ao plantel</option></select>
+      <select class="select" id="newScope"><option value="plantel">Adicionar ao plantel</option><option value="jogo">Adicionar apenas a este jogo</option></select>
       <select class="select" id="newType">
-        <option value="jogo">Ao jogo</option>
-        <option value="mes">Mensalidade</option>
+        <option value="jogo">Pagamento ao jogo</option>
+        <option value="mes">Pagamento mensal</option>
       </select>
       <button class="mainbtn" onclick="addPlayer()">Adicionar</button>
     </div>
@@ -176,31 +183,42 @@ let teams=JSON.parse(localStorage.getItem('cx_normal_teams')||'[]');
 
 function save(){localStorage.setItem('cx_normal_players',JSON.stringify(players));localStorage.setItem('cx_normal_teams',JSON.stringify(teams));}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800)}
-function nextTuesday(){
-  const now=new Date();
-  const day=now.getDay();
-
-  // Terça-feira até às 23:29:59 mantém o jogo desse dia.
-  // A partir das 23:30 assume já o jogo da terça-feira seguinte.
+function defaultNextTuesday(){
+  const now=new Date(), day=now.getDay();
   if(day===2){
     const limite=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,30,0,0);
-    if(now<limite){
-      return new Date(now.getFullYear(),now.getMonth(),now.getDate(),22,0,0,0);
-    }
+    if(now<limite)return new Date(now.getFullYear(),now.getMonth(),now.getDate(),22,0,0,0);
   }
-
-  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),20,30,0,0);
-  let add=(2-day+7)%7;
-
-  if(add===0){add=7;}
-
-  d.setDate(d.getDate()+add);
-  return d;
+  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),22,0,0,0);
+  let add=(2-day+7)%7;if(add===0)add=7;d.setDate(d.getDate()+add);return d;
+}
+function nextTuesday(){
+  const saved=localStorage.getItem('cx_game_datetime_override');
+  if(saved){const d=new Date(saved);if(!isNaN(d.getTime()))return d;}
+  return defaultNextTuesday();
+}
+function formatDateTimeInput(d){
+  const z=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
+}
+function saveGameDateTime(){
+  const el=document.getElementById('cxGameDateTime'),v=el&&el.value;
+  if(!v||isNaN(new Date(v).getTime()))return toast('Indica uma data e hora válidas');
+  if(!confirm('Esta alteração fica apenas neste dispositivo até ser ativada a configuração partilhada. Continuar?'))return;
+  localStorage.setItem('cx_game_datetime_override',v);
+  setDate();render();toast('Data e hora guardadas neste dispositivo');
+}
+function resetGameDateTime(){
+  localStorage.removeItem('cx_game_datetime_override');
+  setDate();render();toast('Reposta terça-feira às 22:00');
 }
 function setDate(){
   const d=nextTuesday();
   const texto=d.toLocaleDateString('pt-PT',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-  document.getElementById('gameDate').textContent='⚽ Jogo · '+texto;
+  const hora=d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('gameDate').textContent='⚽ Jogo · '+texto+' · '+hora;
+  const field=document.getElementById('cxGameDateTime');
+  if(field&&document.activeElement!==field)field.value=formatDateTimeInput(d);
 }
 function show(id){['pres','teams','stat','more','disc'].forEach(x=>document.getElementById(x).classList.toggle('hide',x!==id));['tpres','tteams','tstat','tmore','tdisc'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('t'+id).classList.add('on');render();}
 
