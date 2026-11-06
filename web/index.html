@@ -123,7 +123,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
   <div id="more" class="hide">
     <div class="panel">
       <div class="section-title">Data e hora do jogo</div>
-      <p class="hint">Por defeito: terça-feira às 22:00. A alteração é guardada neste dispositivo até estar disponível a configuração partilhada no servidor.</p>
+      <p class="hint">Por defeito: terça-feira às 22:00. Alterações partilhadas quando o servidor estiver atualizado.</p>
       <input class="input" id="cxGameDateTime" type="datetime-local" aria-label="Data e hora do jogo" />
       <button class="mainbtn blue" onclick="saveGameDateTime()">Guardar data e hora</button>
       <button class="mainbtn" onclick="resetGameDateTime()">Repor terça-feira às 22:00</button>
@@ -204,13 +204,12 @@ function formatDateTimeInput(d){
 function saveGameDateTime(){
   const el=document.getElementById('cxGameDateTime'),v=el&&el.value;
   if(!v||isNaN(new Date(v).getTime()))return toast('Indica uma data e hora válidas');
-  if(!confirm('Esta alteração fica apenas neste dispositivo até ser ativada a configuração partilhada. Continuar?'))return;
-  localStorage.setItem('cx_game_datetime_override',v);
-  setDate();render();toast('Data e hora guardadas neste dispositivo');
+  if(!confirm('Alterar a data e hora do jogo para todos os utilizadores?'))return;
+  postChutaAction({action:'set_config',game_datetime:v}).then(()=>{localStorage.setItem('cx_game_datetime_override',v);setDate();render();toast('Data enviada; a confirmar sincronização');setTimeout(syncSheets,1800);}).catch(()=>toast('Sem ligação: alteração não enviada'));
 }
 function resetGameDateTime(){
-  localStorage.removeItem('cx_game_datetime_override');
-  setDate();render();toast('Reposta terça-feira às 22:00');
+  const v=formatDateTimeInput(defaultNextTuesday());
+  postChutaAction({action:'set_config',game_datetime:v}).then(()=>{localStorage.setItem('cx_game_datetime_override',v);setDate();render();toast('Horário enviado ao servidor');setTimeout(syncSheets,1800);}).catch(()=>toast('Sem ligação: alteração não enviada'));
 }
 function setDate(){
   const d=nextTuesday();
@@ -294,7 +293,17 @@ function drawTeamsNumber(nTeams){
   toast(nTeams===3?'3 equipas sorteadas':'2 equipas sorteadas');
 }
 function confirmAll(){toast('Função removida');}
-function addPlayer(){const name=document.getElementById('newName').value.trim();const type=document.getElementById('newType').value;if(!name)return toast('Escreve o nome');if(players.some(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT')))return toast('Jogador já existe');const scope=document.getElementById('newScope').value;players.push({id:Date.now(),name,type,status:'pendente',pontual:scope==='jogo',gameKey:scope==='jogo'?String(gameKeyAtual()):'',localPending:true});document.getElementById('newName').value='';save();render();toast(scope==='jogo'?'Adicionado a este jogo (neste dispositivo)':'Adicionado ao plantel local; aguarda sincronização com servidor');}
+function postChutaAction(body){
+  return fetch(SHEETS_API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+}
+function addPlayer(){
+  const name=document.getElementById('newName').value.trim(),type=document.getElementById('newType').value,scope=document.getElementById('newScope').value;
+  if(!name)return toast('Escreve o nome');
+  if(players.some(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT')))return toast('Jogador já existe');
+  postChutaAction({action:'add_player',jogador:name,pagamento:type,scope:scope,cycle:gameKeyAtual()})
+    .then(()=>{document.getElementById('newName').value='';toast('Pedido enviado; a confirmar no servidor');setTimeout(syncSheets,1800);})
+    .catch(()=>toast('Não foi possível enviar o jogador'));
+}
 function bulkAdd(){const txt=document.getElementById('bulk').value.trim();if(!txt)return toast('Cola a lista');const arr=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);arr.forEach((name,i)=>players.push({id:Date.now()+i,name,type:'jogo',status:'pendente',pontual:true,gameKey:String(gameKeyAtual())}));document.getElementById('bulk').value='';save();render();toast(arr.length+' jogadores importados');}
 function resetApp(){if(!confirm('Repor plantel inicial?'))return;players=basePlayers.map((p,i)=>({id:Date.now()+i,name:p.name,type:p.type,status:'pendente'}));teams=[];save();render();toast('Plantel reposto');}
 
@@ -374,13 +383,15 @@ function carregarSheetsServidor(){
         if(!payload || payload.ok!==true || !Array.isArray(payload.data)) throw new Error('Resposta inválida do servidor');
         const serverKey=String(payload.game_key||'');
         const localKey=String(gameKeyAtual());
-        if(!serverKey || serverKey!==localKey) throw new Error('Ciclo diferente: '+serverKey);
+        if(payload.game_datetime && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(payload.game_datetime))localStorage.setItem('cx_game_datetime_override',payload.game_datetime);
+        const effectiveKey=String(gameKeyAtual());
+        if(!serverKey || serverKey!==effectiveKey) throw new Error('Ciclo diferente: '+serverKey);
         const rows=payload.data.filter(r=>r && String(r.jogador||'').trim()!=='');
         if(!rows.length) throw new Error('Sem jogadores válidos');
 
         const oldPlayers=Array.isArray(players)?players:[];
         // Os convidados pontuais pertencem apenas ao ciclo atual e não à folha permanente.
-        const convidados=oldPlayers.filter(p=>p && p.localPending===true && (p.pontual!==true || p.gameKey===localKey));
+        const convidados=oldPlayers.filter(p=>p && p.localPending===true && (p.pontual!==true || p.gameKey===effectiveKey));
         players=rows.map(function(r,i){
           const nome=String(r.jogador||'').trim();
           const old=oldPlayers.find(p=>String((p&&p.name)||'').trim().toLowerCase()===nome.toLowerCase());
@@ -393,9 +404,10 @@ function carregarSheetsServidor(){
             paid:old&&old.paid?true:false,
             pontual:false,
             estatistica:Math.max(0,Number(r.estatistica||0)),
-            presencaContadaKey:status==='confirmado'?localKey:''
+            presencaContadaKey:status==='confirmado'?effectiveKey:''
           };
         });
+        (Array.isArray(payload.guests)?payload.guests:[]).forEach(function(g,i){if(!g||!g.jogador)return;players.push({id:Date.now()+10000+i,name:String(g.jogador),type:normalizaTipo(g.pagamento),status:normalizaPresenca(g.presenca),pontual:true,gameKey:effectiveKey,estatistica:0});});
         const nomesFixos=new Set(players.map(p=>String(p.name||'').trim().toLocaleLowerCase('pt-PT')));
         players.push(...convidados.filter(p=>!nomesFixos.has(String(p.name||'').trim().toLocaleLowerCase('pt-PT'))));
 
