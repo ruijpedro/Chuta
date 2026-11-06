@@ -60,6 +60,8 @@ function addPlayerV2_(body){
  const nome=norm_(body.jogador),tipo=norm_(body.pagamento)==='mes'?'mes':'jogo';
  const scope=norm_(body.scope),cycle=norm_(body.cycle);
  if(!nome||nome.length>100)return {ok:false,error:'Nome inválido'};
+ const all=sheet_(),n=all.getLastRow(),allNames=n>HEADER_ROW?all.getRange(HEADER_ROW+1,2,n-HEADER_ROW,1).getDisplayValues():[];
+ if(allNames.some(r=>norm_(r[0]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe no plantel'};
  if(scope==='jogo'){
    if(!/^\d{4}-\d{2}-\d{2}$/.test(cycle))return {ok:false,error:'Ciclo inválido'};
    const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
@@ -81,12 +83,12 @@ function doGet(e){
  try{
   if(action==='config'){return jsonp_(getConfig_(),p.callback);}
   if(action==='guests'){return jsonp_({ok:true,data:listGuests_(cycle)},p.callback);}
-  if(action==='reset'){resetPresencas_();if(cycle)PropertiesService.getScriptProperties().setProperty('CX_RESET_CYCLE',cycle);return jsonp_({ok:true,cycle:cycle,reset:true},p.callback);}
-  if(action==='ensure'){return jsonp_({ok:true,cycle:cycle,reset:false},p.callback);}
+  if(action==='reset'){return jsonp_({ok:true,cycle:defaultCycle_(),reset:false,note:'Reset remoto desativado por segurança'},p.callback);}
+  if(action==='ensure'){return jsonp_({ok:true,cycle:defaultCycle_(),reset:false},p.callback);}
   if(action==='list'){
     // Leitura nunca pode limpar presenças devido a relógios ou versões diferentes.
     const cfg=getConfig_();
-    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):(cycle||norm_(PropertiesService.getScriptProperties().getProperty('CX_RESET_CYCLE'))||defaultCycle_());
+    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):defaultCycle_();
     const out=list_(gameKey);out.game_key=gameKey;out.game_datetime=cfg.game_datetime;out.guests=listGuests_(gameKey);return jsonp_(out,p.callback);
   }
   // compatibilidade com versões antigas
@@ -101,7 +103,9 @@ function doPost(e){
   const body=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
   if(body.action==='set_config')return jsonp_(setConfig_(norm_(body.game_datetime)));
   if(body.action==='add_player')return jsonp_(addPlayerV2_(body));
-  const nome=norm_(body.jogador),semana=norm_(body.semana);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
+  const nome=norm_(body.jogador),semana=norm_(body.semana||body.game_key);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
+  const config=getConfig_(),expected=config.game_datetime?config.game_datetime.slice(0,10):defaultCycle_();
+  if(semana&&semana!==expected)return jsonp_({ok:false,error:'Ciclo diferente',game_key:expected});
   const guestSheet=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
   const guestRows=guestSheet.getDataRange().getDisplayValues();
   const guestIndex=guestRows.findIndex((r,i)=>i>0&&r[0]===semana&&norm_(r[1]).toLowerCase()===nome.toLowerCase());
@@ -111,7 +115,8 @@ function doPost(e){
   const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();let row=-1;
   for(let i=0;i<names.length;i++)if(norm_(names[i][0]).toLowerCase()===nome.toLowerCase()){row=HEADER_ROW+1+i;break;}
   if(row<0)return jsonp_({ok:false,error:'jogador não encontrado'});
-  sh.getRange(row,3).setValue(norm_(body.presenca));sh.getRange(row,4).setValue(norm_(body.pagamento));
+  if(Object.prototype.hasOwnProperty.call(body,'presenca'))sh.getRange(row,3).setValue(norm_(body.presenca));
+  if(Object.prototype.hasOwnProperty.call(body,'pagamento'))sh.getRange(row,4).setValue(norm_(body.pagamento));
   const delta=Number(body.estatistica_delta||0),props=PropertiesService.getScriptProperties(),key='STAT|'+nome.toLowerCase()+'|'+semana;let atual=Number(sh.getRange(row,5).getValue())||0;
   if(delta>0&&semana&&!props.getProperty(key)){atual++;sh.getRange(row,5).setValue(atual);props.setProperty(key,'1');}
   else{const rec=Number(body.estatistica||0);if(rec>atual){atual=rec;sh.getRange(row,5).setValue(atual);}}
