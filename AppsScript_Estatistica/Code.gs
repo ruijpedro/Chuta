@@ -35,12 +35,21 @@ function getConfig_(){
  return {ok:true,game_datetime:row?row[1]:'',default_weekday:2,default_time:'22:00'};
 }
 function setConfig_(value){
- if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(value))return {ok:false,error:'Data inválida'};
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value))return {ok:false,error:'Data inválida'};
  const sh=ensureExtraSheet_(CX_CONFIG_SHEET,['Chave','Valor']);
  const vals=sh.getDataRange().getDisplayValues();
  let idx=vals.findIndex(r=>r[0]==='game_datetime');
  if(idx<0){sh.appendRow(['game_datetime',value]);}else{sh.getRange(idx+1,2).setNumberFormat('@').setValue(value);}
  return getConfig_();
+}
+function defaultCycle_(){
+ const now=new Date(),tz='Europe/Lisbon';
+ const parts=Utilities.formatDate(now,tz,'yyyy-MM-dd').split('-').map(Number);
+ const local=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
+ const day=local.getUTCDay();let diff=(2-day+7)%7;
+ if(diff===0 && Number(Utilities.formatDate(now,tz,'HHmm'))>=2330)diff=7;
+ local.setUTCDate(local.getUTCDate()+diff);
+ return Utilities.formatDate(local,'UTC','yyyy-MM-dd');
 }
 function listGuests_(cycle){
  const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
@@ -52,7 +61,7 @@ function addPlayerV2_(body){
  const scope=norm_(body.scope),cycle=norm_(body.cycle);
  if(!nome||nome.length>100)return {ok:false,error:'Nome inválido'};
  if(scope==='jogo'){
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(cycle))return {ok:false,error:'Ciclo inválido'};
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(cycle))return {ok:false,error:'Ciclo inválido'};
    const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
    const vals=sh.getDataRange().getDisplayValues().slice(1);
    if(vals.some(r=>r[0]===cycle&&norm_(r[1]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe neste jogo'};
@@ -73,11 +82,11 @@ function doGet(e){
   if(action==='config'){return jsonp_(getConfig_(),p.callback);}
   if(action==='guests'){return jsonp_({ok:true,data:listGuests_(cycle)},p.callback);}
   if(action==='reset'){resetPresencas_();if(cycle)PropertiesService.getScriptProperties().setProperty('CX_RESET_CYCLE',cycle);return jsonp_({ok:true,cycle:cycle,reset:true},p.callback);}
-  if(action==='ensure'){return jsonp_(ensureCycle_(cycle),p.callback);}
+  if(action==='ensure'){return jsonp_({ok:true,cycle:cycle,reset:false},p.callback);}
   if(action==='list'){
     // Leitura nunca pode limpar presenças devido a relógios ou versões diferentes.
     const cfg=getConfig_();
-    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):(cycle||norm_(PropertiesService.getScriptProperties().getProperty('CX_RESET_CYCLE')));
+    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):(cycle||norm_(PropertiesService.getScriptProperties().getProperty('CX_RESET_CYCLE'))||defaultCycle_());
     const out=list_(gameKey);out.game_key=gameKey;out.game_datetime=cfg.game_datetime;out.guests=listGuests_(gameKey);return jsonp_(out,p.callback);
   }
   // compatibilidade com versões antigas
@@ -93,6 +102,10 @@ function doPost(e){
   if(body.action==='set_config')return jsonp_(setConfig_(norm_(body.game_datetime)));
   if(body.action==='add_player')return jsonp_(addPlayerV2_(body));
   const nome=norm_(body.jogador),semana=norm_(body.semana);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
+  const guestSheet=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
+  const guestRows=guestSheet.getDataRange().getDisplayValues();
+  const guestIndex=guestRows.findIndex((r,i)=>i>0&&r[0]===semana&&norm_(r[1]).toLowerCase()===nome.toLowerCase());
+  if(guestIndex>0){guestSheet.getRange(guestIndex+1,4).setValue(norm_(body.presenca));return jsonp_({ok:true,jogador:nome,cycle:semana,pontual:true});}
   // Nunca fazer reset implícito ao receber confirmações de um cliente.
   const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_({ok:false,error:'sem jogadores'});
   const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();let row=-1;
