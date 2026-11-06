@@ -383,7 +383,8 @@ function carregarSheetsServidor(){
         if(!payload || payload.ok!==true || !Array.isArray(payload.data)) throw new Error('Resposta inválida do servidor');
         const serverKey=String(payload.game_key||'');
         const localKey=String(gameKeyAtual());
-        if(payload.game_datetime && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(payload.game_datetime))localStorage.setItem('cx_game_datetime_override',payload.game_datetime);
+        if(payload.game_datetime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(payload.game_datetime))localStorage.setItem('cx_game_datetime_override',payload.game_datetime);
+        else if(Object.prototype.hasOwnProperty.call(payload,'game_datetime'))localStorage.removeItem('cx_game_datetime_override');
         const effectiveKey=String(gameKeyAtual());
         if(!serverKey || serverKey!==effectiveKey) throw new Error('Ciclo diferente: '+serverKey);
         const rows=payload.data.filter(r=>r && String(r.jogador||'').trim()!=='');
@@ -421,7 +422,7 @@ function carregarSheetsServidor(){
     const sc=document.createElement('script');
     sc.id=callbackName;
     sc.onerror=function(){fail(new Error('Erro de comunicação'));};
-    sc.src=SHEETS_API_URL+'?action=list&callback='+encodeURIComponent(callbackName)+'&_v=155&t='+Date.now();
+    sc.src=SHEETS_API_URL+'?action=list&cycle='+encodeURIComponent(gameKeyAtual())+'&callback='+encodeURIComponent(callbackName)+'&_v=160&t='+Date.now();
     document.body.appendChild(sc);
     setTimeout(function(){fail(new Error('Timeout de sincronização'));},10000);
   });
