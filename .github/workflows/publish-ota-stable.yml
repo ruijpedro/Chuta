@@ -78,3 +78,23 @@ jobs:
           git add ota/manifest.json
           git commit -m "release(ota): manifesto público $VERSION"
           git push origin HEAD:main
+
+      - name: Atualizar também manifesto do canal de testes legado
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git fetch origin develop/chutaxuta-v1.59-ota
+          git checkout -B ota-publish-legacy origin/develop/chutaxuta-v1.59-ota
+          mkdir -p ota
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          v=os.environ['VERSION']
+          m=dict(appId='com.rjp.chulaxuta',version=v,minNativeVersion='1.59.0',url=f'https://github.com/ruijpedro/Chuta/releases/download/ota-v{v}/chutaxuta-ota-v{v}.zip',checksum=os.environ['OTA_SHA'],notes='Atualização estável 1.60 para instalações existentes')
+          Path('ota/manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\\n')
+          PY
+          python scripts/validate_ota_manifest.py
+          git add ota/manifest.json
+          git commit -m "release(ota): disponibilizar $VERSION ao canal legado"
+          git push origin HEAD:develop/chutaxuta-v1.59-ota
