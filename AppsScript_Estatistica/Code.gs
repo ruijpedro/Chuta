@@ -37,6 +37,40 @@ function activeGame_(){
  const dt=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)&&value.slice(0,10)>=today?value:'';
  return {game_key:dt?dt.slice(0,10):defaultCycle_(),game_datetime:dt};
 }
+/** Executar UMA VEZ no editor Apps Script para instalar o reset semanal.
+ * O trigger corre de 5 em 5 minutos; só limpa após terça 23:30 em Lisboa.
+ * Não apaga pagamentos (D), estatísticas (E) nem jogadores pontuais históricos.
+ */
+function cx160InstallWeeklyTrigger_(){
+ const fn='cx160ScheduledReset_';
+ const existing=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===fn);
+ existing.forEach(t=>ScriptApp.deleteTrigger(t));
+ ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create();
+ const props=PropertiesService.getScriptProperties();
+ if(!props.getProperty('CX_RESET_CYCLE'))props.setProperty('CX_RESET_CYCLE',defaultCycle_());
+ return {ok:true,trigger:fn};
+}
+function cx160ScheduledReset_(){
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const now=new Date(),tz='Europe/Lisbon';
+  const weekday=Number(Utilities.formatDate(now,tz,'u'));
+  const hhmm=Number(Utilities.formatDate(now,tz,'HHmm'));
+  // Apenas terça-feira depois das 23:30; a execução exata depende do agendador Google.
+  if(weekday!==2||hhmm<2330)return {ok:true,reset:false,reason:'fora da janela'};
+  const today=Utilities.formatDate(now,tz,'yyyy-MM-dd');
+  const props=PropertiesService.getScriptProperties();
+  if(props.getProperty('CX_LAST_RESET_DATE')===today)return {ok:true,reset:false,reason:'já executado'};
+  const configured=cx160Config_();
+  // Jogo personalizado futuro: não limpar as confirmações desse jogo.
+  if(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(configured)&&configured.slice(0,10)>today)
+   return {ok:true,reset:false,reason:'jogo personalizado futuro'};
+  resetPresencas_();
+  props.setProperty('CX_LAST_RESET_DATE',today);
+  props.setProperty('CX_RESET_CYCLE',defaultCycle_());
+  return {ok:true,reset:true,date:today};
+ }finally{lock.releaseLock();}
+}
 function updateWeeklyCycle_(){
  const props=PropertiesService.getScriptProperties(),key=defaultCycle_();
  const old=props.getProperty('CX_WEEKLY_KEY');
