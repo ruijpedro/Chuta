@@ -70,7 +70,7 @@ jobs:
           import json,re
           m=json.load(open('ota/manifest.json'))
           assert m['appId']=='com.rjp.chulaxuta'
-          assert re.fullmatch(r'1\\.60\\.\\d+',m['version'])
+          assert re.fullmatch(r'1\.60\.\d+',m['version'])
           assert re.fullmatch(r'[0-9a-f]{64}',m['checksum'])
           PY
           git config user.name github-actions
@@ -92,7 +92,7 @@ jobs:
           from pathlib import Path
           v=os.environ['VERSION']
           m=dict(appId='com.rjp.chulaxuta',version=v,minNativeVersion='1.59.0',url=f'https://github.com/ruijpedro/Chuta/releases/download/ota-v{v}/chutaxuta-ota-v{v}.zip',checksum=os.environ['OTA_SHA'],notes='Atualização estável 1.60 para instalações existentes')
-          Path('ota/manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\\n')
+          Path('ota/manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
           PY
           python scripts/validate_ota_manifest.py
           git add ota/manifest.json
