@@ -1,0 +1,74 @@
+name: Publicar ChutaXuta OTA estável
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão pública (ex. 1.60.0)'
+        required: true
+        default: '1.60.0'
+      confirm:
+        description: 'Escrever PUBLICAR para distribuir a versão estável'
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: chutaxuta-ota-public
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: ${{ github.ref_name == 'main' && inputs.confirm == 'PUBLICAR' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop/chutaxuta-v1.59-ota
+      - name: Validar pacote e versão
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^1\.60\.[0-9]+$ ]]
+          test -s web/index.html
+          test -s AppsScript_Estatistica/Code.gs
+          test -s AppsScript_Estatistica/ChutaXuta_v160.gs
+          ! grep -q 'cx-ota-test-version' web/index.html
+          if gh release view "ota-v$VERSION" >/dev/null 2>&1; then
+            echo 'Release já existe; não substituir'; exit 1
+          fi
+      - name: Preparar ZIP e checksum
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p bundle
+          cp -a web/. bundle/
+          (cd bundle && zip -qr "../chutaxuta-ota-v$VERSION.zip" .)
+          echo "OTA_SHA=$(sha256sum "chutaxuta-ota-v$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Publicar Release estável
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "ota-v$VERSION" "chutaxuta-ota-v$VERSION.zip" --title "ChutaXuta OTA $VERSION" --notes "Atualização pública estável ChutaXuta $VERSION" --latest
+      - name: Publicar manifesto no ramo main
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B ota-publish-main origin/main
+          mkdir -p ota
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          v=os.environ['VERSION']
+          m=dict(appId='com.rjp.chulaxuta',version=v,minNativeVersion='1.59.0',url=f'https://github.com/ruijpedro/Chuta/releases/download/ota-v{v}/chutaxuta-ota-v{v}.zip',checksum=os.environ['OTA_SHA'],notes='Atualização pública estável')
+          Path('ota/manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/validate_ota_manifest.py
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add ota/manifest.json
+          git commit -m "release(ota): manifesto público $VERSION"
+          git push origin HEAD:main
