@@ -7,10 +7,12 @@ function jsonp_(obj,cb){const t=JSON.stringify(obj);return ContentService.create
 function norm_(v){return String(v==null?'':v).trim();}
 function resetPresencas_(){const sh=sheet_(),last=sh.getLastRow();if(last>HEADER_ROW)sh.getRange(HEADER_ROW+1,3,last-HEADER_ROW,1).clearContent();SpreadsheetApp.flush();}
 function ensureCycle_(cycle){
- cycle=norm_(cycle); if(!cycle)return {ok:false,error:'cycle vazio'};
- const props=PropertiesService.getScriptProperties(),old=props.getProperty('CX_RESET_CYCLE');let did=false;
- if(old!==cycle){resetPresencas_();props.setProperty('CX_RESET_CYCLE',cycle);did=true;}
- return {ok:true,cycle:cycle,reset:did};
+  cycle=norm_(cycle);if(!cycle)return {ok:false,error:'cycle vazio'};
+  const props=PropertiesService.getScriptProperties();
+  const old=props.getProperty('CX_RESET_CYCLE');
+  // Nunca limpar presenças durante uma leitura nem na primeira execução após upgrade.
+  if(!old)props.setProperty('CX_RESET_CYCLE',cycle);
+  return {ok:true,cycle:cycle,reset:false};
 }
 function list_(cycle){
  const sh=sheet_(),last=sh.getLastRow(),data=[];
@@ -20,106 +22,86 @@ function list_(cycle){
 
 /* API v1.60: configuração e jogadores. Requer publicação de nova versão do Apps Script.
    A API antiga mantém-se; nunca redefinir presenças por simples leitura de configuração. */
-const CX_CONFIG_SHEET='Configuracao';
-const CX_GUEST_SHEET='Jogadores_Jogo';
-function ensureExtraSheet_(name,header){
- const ss=SpreadsheetApp.openById(CX_SHEET_ID);
- let sh=ss.getSheetByName(name);
- if(!sh){sh=ss.insertSheet(name);sh.appendRow(header);}
- return sh;
-}
-function getConfig_(){
- const sh=ensureExtraSheet_(CX_CONFIG_SHEET,['Chave','Valor']);
- const vals=sh.getDataRange().getDisplayValues();
- const row=vals.find(r=>r[0]==='game_datetime');
- return {ok:true,game_datetime:row?row[1]:'',default_weekday:2,default_time:'22:00'};
-}
-function setConfig_(value){
- if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value))return {ok:false,error:'Data inválida'};
- const sh=ensureExtraSheet_(CX_CONFIG_SHEET,['Chave','Valor']);
- const vals=sh.getDataRange().getDisplayValues();
- let idx=vals.findIndex(r=>r[0]==='game_datetime');
- if(idx<0){sh.appendRow(['game_datetime',value]);}else{sh.getRange(idx+1,2).setNumberFormat('@').setValue(value);}
- return getConfig_();
-}
 function defaultCycle_(){
  const now=new Date(),tz='Europe/Lisbon';
  const parts=Utilities.formatDate(now,tz,'yyyy-MM-dd').split('-').map(Number);
  const local=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
  const day=local.getUTCDay();let diff=(2-day+7)%7;
- if(diff===0 && Number(Utilities.formatDate(now,tz,'HHmm'))>=2330)diff=7;
+ if(diff===0&&Number(Utilities.formatDate(now,tz,'HHmm'))>=2330)diff=7;
  local.setUTCDate(local.getUTCDate()+diff);
  return Utilities.formatDate(local,'UTC','yyyy-MM-dd');
 }
-function listGuests_(cycle){
- const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
- const vals=sh.getDataRange().getDisplayValues().slice(1);
- return vals.filter(r=>r[0]===cycle&&norm_(r[1])).map(r=>({jogador:r[1],pagamento:r[2],presenca:r[3],pontual:true}));
+function activeGame_(){
+ const value=cx160Config_();
+ const today=Utilities.formatDate(new Date(),'Europe/Lisbon','yyyy-MM-dd');
+ const dt=/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(value)&&value.slice(0,10)>=today?value:'';
+ return {game_key:dt?dt.slice(0,10):defaultCycle_(),game_datetime:dt};
 }
-function addPlayerV2_(body){
- const nome=norm_(body.jogador),tipo=norm_(body.pagamento)==='mes'?'mes':'jogo';
- const scope=norm_(body.scope),cycle=norm_(body.cycle);
- if(!nome||nome.length>100)return {ok:false,error:'Nome inválido'};
- const all=sheet_(),n=all.getLastRow(),allNames=n>HEADER_ROW?all.getRange(HEADER_ROW+1,2,n-HEADER_ROW,1).getDisplayValues():[];
- if(allNames.some(r=>norm_(r[0]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe no plantel'};
- if(scope==='jogo'){
-   if(!/^\d{4}-\d{2}-\d{2}$/.test(cycle))return {ok:false,error:'Ciclo inválido'};
-   const sh=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
-   const vals=sh.getDataRange().getDisplayValues().slice(1);
-   if(vals.some(r=>r[0]===cycle&&norm_(r[1]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe neste jogo'};
-   sh.appendRow([cycle,nome,tipo,'pendente']);
-   return {ok:true,jogador:nome,scope:'jogo',cycle:cycle};
- }
- if(scope!=='plantel')return {ok:false,error:'Tipo de inscrição inválido'};
- const sh=sheet_(),last=sh.getLastRow();
- const names=last>HEADER_ROW?sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues():[];
- if(names.some(r=>norm_(r[0]).toLowerCase()===nome.toLowerCase()))return {ok:false,error:'Já existe no plantel'};
- sh.getRange(last+1,2,1,4).setValues([[nome,'pendente',tipo,0]]);
- return {ok:true,jogador:nome,scope:'plantel'};
+function updateWeeklyCycle_(){
+ const props=PropertiesService.getScriptProperties(),key=defaultCycle_();
+ const old=props.getProperty('CX_WEEKLY_KEY');
+ const game=activeGame_();
+ // Não limpar automaticamente em GET: clientes antigos e alterações de data
+ // não podem apagar confirmações dos jogadores.
+ if(old!==key)props.setProperty('CX_WEEKLY_KEY',key);
+ return game;
 }
-
 function doGet(e){
- const p=(e&&e.parameter)||{},action=norm_(p.action).toLowerCase(),cycle=norm_(p.cycle),lock=LockService.getScriptLock();lock.waitLock(15000);
+ const p=(e&&e.parameter)||{},action=norm_(p.action).toLowerCase();
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
-  if(action==='config'){return jsonp_(getConfig_(),p.callback);}
-  if(action==='guests'){return jsonp_({ok:true,data:listGuests_(cycle)},p.callback);}
-  if(action==='reset'){return jsonp_({ok:true,cycle:defaultCycle_(),reset:false,note:'Reset remoto desativado por segurança'},p.callback);}
-  if(action==='ensure'){return jsonp_({ok:true,cycle:defaultCycle_(),reset:false},p.callback);}
-  if(action==='list'){
-    // Leitura nunca pode limpar presenças devido a relógios ou versões diferentes.
-    const cfg=getConfig_();
-    const gameKey=cfg.game_datetime?cfg.game_datetime.slice(0,10):defaultCycle_();
-    const out=list_(gameKey);out.game_key=gameKey;out.game_datetime=cfg.game_datetime;out.guests=listGuests_(gameKey);return jsonp_(out,p.callback);
-  }
-  // compatibilidade com versões antigas
-  const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_([],p.callback);
-  const vals=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,4).getValues();
-  return jsonp_(vals.map(r=>({jogador:norm_(r[0]),presenca:norm_(r[1]),pagamento:norm_(r[2]),estatistica:Number(r[3])||0})).filter(r=>r.jogador),p.callback);
- }finally{lock.releaseLock();}
+  const game=updateWeeklyCycle_();
+  if(action==='config')return jsonp_({ok:true,game_key:game.game_key,game_datetime:game.game_datetime,default_weekday:2,default_time:'22:00'},p.callback);
+  if(action==='guests')return jsonp_({ok:true,game_key:game.game_key,data:cx160Guests_(game.game_key)},p.callback);
+  if(action==='reset'||action==='ensure')return jsonp_({ok:true,game_key:game.game_key,cycle:game.game_key,reset:false},p.callback);
+  const out=list_(game.game_key);
+  out.game_key=game.game_key;out.game_datetime=game.game_datetime;out.guests=cx160Guests_(game.game_key);
+  return jsonp_(out,p.callback);
+ }catch(err){return jsonp_({ok:false,error:String(err.message||err)},p.callback);}
+ finally{lock.releaseLock();}
 }
 function doPost(e){
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
   const body=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
-  if(body.action==='set_config')return jsonp_(setConfig_(norm_(body.game_datetime)));
-  if(body.action==='add_player')return jsonp_(addPlayerV2_(body));
-  const nome=norm_(body.jogador),semana=norm_(body.semana||body.game_key);if(!nome)return jsonp_({ok:false,error:'jogador vazio'});
-  const config=getConfig_(),expected=config.game_datetime?config.game_datetime.slice(0,10):defaultCycle_();
-  if(semana&&semana!==expected)return jsonp_({ok:false,error:'Ciclo diferente',game_key:expected});
-  const guestSheet=ensureExtraSheet_(CX_GUEST_SHEET,['Ciclo','Jogador','Pagamento','Presenca']);
-  const guestRows=guestSheet.getDataRange().getDisplayValues();
-  const guestIndex=guestRows.findIndex((r,i)=>i>0&&r[0]===semana&&norm_(r[1]).toLowerCase()===nome.toLowerCase());
-  if(guestIndex>0){guestSheet.getRange(guestIndex+1,4).setValue(norm_(body.presenca));return jsonp_({ok:true,jogador:nome,cycle:semana,pontual:true});}
-  // Nunca fazer reset implícito ao receber confirmações de um cliente.
-  const sh=sheet_(),last=sh.getLastRow();if(last<=HEADER_ROW)return jsonp_({ok:false,error:'sem jogadores'});
-  const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();let row=-1;
-  for(let i=0;i<names.length;i++)if(norm_(names[i][0]).toLowerCase()===nome.toLowerCase()){row=HEADER_ROW+1+i;break;}
-  if(row<0)return jsonp_({ok:false,error:'jogador não encontrado'});
+  const action=norm_(body.action).toLowerCase();
+  const game=updateWeeklyCycle_();
+  if(action==='set_config'){
+   const value=norm_(body.game_datetime);
+   if(value){
+    const result=cx160SetConfig_(value);
+    if(!result.ok)return jsonp_(result);
+   }else{
+    const sh=cx160Sheet_(CX160_CONFIG,['Chave','Valor']);
+    const rows=sh.getDataRange().getDisplayValues();
+    const i=rows.findIndex((r,n)=>n>0&&r[0]==='game_datetime');
+    if(i>=0)sh.getRange(i+1,2).setValue('');
+   }
+   return jsonp_({ok:true,...activeGame_()});
+  }
+  const requested=norm_(body.cycle||body.semana||body.game_key);
+  if(requested&&requested!==game.game_key)return jsonp_({ok:false,error:'Ciclo diferente',game_key:game.game_key});
+  if(action==='add_player')return jsonp_(cx160AddPlayer_(body,game.game_key));
+  const name=norm_(body.jogador);
+  if(!name)return jsonp_({ok:false,error:'Jogador vazio'});
+  const guest=cx160UpdateGuest_(body,game.game_key);
+  if(guest)return jsonp_(guest);
+  const sh=sheet_(),last=sh.getLastRow();
+  if(last<=HEADER_ROW)return jsonp_({ok:false,error:'Sem jogadores'});
+  const names=sh.getRange(HEADER_ROW+1,2,last-HEADER_ROW,1).getDisplayValues();
+  const idx=names.findIndex(r=>norm_(r[0]).toLocaleLowerCase('pt-PT')===name.toLocaleLowerCase('pt-PT'));
+  if(idx<0)return jsonp_({ok:false,error:'Jogador não encontrado'});
+  const row=HEADER_ROW+1+idx;
   if(Object.prototype.hasOwnProperty.call(body,'presenca'))sh.getRange(row,3).setValue(norm_(body.presenca));
   if(Object.prototype.hasOwnProperty.call(body,'pagamento'))sh.getRange(row,4).setValue(norm_(body.pagamento));
-  const delta=Number(body.estatistica_delta||0),props=PropertiesService.getScriptProperties(),key='STAT|'+nome.toLowerCase()+'|'+semana;let atual=Number(sh.getRange(row,5).getValue())||0;
-  if(delta>0&&semana&&!props.getProperty(key)){atual++;sh.getRange(row,5).setValue(atual);props.setProperty(key,'1');}
-  else{const rec=Number(body.estatistica||0);if(rec>atual){atual=rec;sh.getRange(row,5).setValue(atual);}}
-  SpreadsheetApp.flush();return jsonp_({ok:true,jogador:nome,cycle:semana,estatistica:atual});
- }finally{lock.releaseLock();}
+  const delta=Number(body.estatistica_delta||0),props=PropertiesService.getScriptProperties();
+  const statKey='STAT|'+name.toLocaleLowerCase('pt-PT')+'|'+game.game_key;
+  let total=Number(sh.getRange(row,5).getValue())||0;
+  if(delta===1&&!props.getProperty(statKey)){
+   total++;sh.getRange(row,5).setValue(total);props.setProperty(statKey,'1');
+  }
+  SpreadsheetApp.flush();
+  return jsonp_({ok:true,jogador:name,game_key:game.game_key,estatistica:total});
+ }catch(err){return jsonp_({ok:false,error:String(err.message||err)});}
+ finally{lock.releaseLock();}
 }
