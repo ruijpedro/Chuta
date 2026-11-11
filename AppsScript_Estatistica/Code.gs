@@ -34,7 +34,7 @@ function defaultCycle_(){
 function activeGame_(){
  const value=cx160Config_();
  const today=Utilities.formatDate(new Date(),'Europe/Lisbon','yyyy-MM-dd');
- const dt=/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(value)&&value.slice(0,10)>=today?value:'';
+ const dt=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)&&value.slice(0,10)>=today?value:'';
  return {game_key:dt?dt.slice(0,10):defaultCycle_(),game_datetime:dt};
 }
 function updateWeeklyCycle_(){
