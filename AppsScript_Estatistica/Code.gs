@@ -63,7 +63,7 @@ function cx160ScheduledReset_(){
   if(props.getProperty('CX_LAST_RESET_DATE')===today)return {ok:true,reset:false,reason:'já executado'};
   const configured=cx160Config_();
   // Jogo personalizado futuro: não limpar as confirmações desse jogo.
-  if(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(configured)&&configured.slice(0,10)>today)
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(configured)&&configured.slice(0,10)>today)
    return {ok:true,reset:false,reason:'jogo personalizado futuro'};
   resetPresencas_();
   props.setProperty('CX_LAST_RESET_DATE',today);
