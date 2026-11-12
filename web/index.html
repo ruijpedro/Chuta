@@ -16,7 +16,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
 .title{font-size:31px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
 .sub{color:var(--mut);font-size:12px;letter-spacing:2px;font-weight:800;margin-top:4px}
 .date{display:inline-block;margin-top:12px;background:rgba(255,210,31,.12);color:var(--gold);border:1px solid rgba(255,210,31,.25);padding:8px 14px;border-radius:999px;font-weight:900;font-size:13px}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:rgba(255,255,255,.07);padding:6px;border-radius:18px;margin:16px 0}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:rgba(255,255,255,.07);padding:6px;border-radius:18px;margin:16px 0}
 .tab{border:0;border-radius:13px;padding:10px 4px;background:transparent;color:var(--mut);font-weight:900;font-size:11px}
 .tab.on{background:var(--gold);color:#121212}
 .panel{background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:14px;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
@@ -71,6 +71,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     <button class="tab" onclick="show('stat')" id="tstat">Stat</button>
     <button class="tab" onclick="show('more')" id="tmore">Mais</button>
     <button class="tab" onclick="show('disc')" id="tdisc">Aviso</button>
+    <button class="tab" onclick="show('rules')" id="trules">Estatutos</button>
   </div>
 
   <div id="pres">
@@ -94,6 +95,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
   </div>
 
   <div id="teams" class="hide">
+    <div class="panel"><div class="section-title">Cores das camisolas</div><p class="hint">Escolhe entre verde, vermelha, amarela e azul. As escolhas ficam guardadas para os próximos jogos.</p><div id="teamColorControls"></div></div>
     <div class="panel">
       <div class="section-title">Escolha automática</div>
       <p class="hint">Sorteia automaticamente só os jogadores confirmados. Até 10 jogadores faz 5v5. Com muitos jogadores cria 3 equipas automaticamente.</p>
@@ -151,6 +153,15 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(
     </div>
   </div>
 
+  <div id="rules" class="hide">
+    <div class="panel"><div class="section-title">⚽ Estatutos do Clube Chuta Xuta F.C.</div><p>Objetivos: jogar à bola, conviver e organizar jantaradas com bebida e boa disposição!</p></div>
+    <div class="panel"><div class="section-title">1.º — Novos membros</div><p>Aceites mediante aprovação dos membros e pagamento obrigatório da taxa de entrada: <strong>2 grades de minis ou 10 litrosas</strong>.</p></div>
+    <div class="panel"><div class="section-title">2.º — Pagamentos</div><p>O pagamento mensal dá acesso aos jogos e aos jantares gratuitos. O membro que paga ao jogo terá de pagar o valor do jantar.</p></div>
+    <div class="panel"><div class="section-title">3.º — Convocatórias</div><p>Sem dia nem hora estipulados: estejam atentos ao WhatsApp. A convocatória é feita pelo 13.º jogador e o 14.º jogador com mensalidade tem preferência para ir a jogo. Na ausência do 13.º, a convocatória será feita pelo capitão ISSO. Têm preferência os jogadores que pagam ao mês.</p></div>
+    <div class="panel"><div class="section-title">4.º — Jantares</div><p>Os jantares e as datas são estipulados de comum acordo. Para os membros com mensalidade, o excedente após pagamento do campo fica em carteira para os convívios. Após acordo, alguns jogadores ficam encarregues de trazer vinho e outras bebidas, de forma aleatória e equilibrada.</p></div>
+    <div class="panel"><div class="section-title">5.º — Fair Play</div><p>Embora não seja obrigatório, a equipa perdedora deverá demonstrar fair play e pagar uma rodada de minis no final da partida.</p></div>
+    <div class="panel"><div class="section-title">6.º — Varrimento do grupo</div><p>O incumprimento dos Estatutos ou a falta de assiduidade poderá originar uma varridela do grupo.</p></div>
+  </div>
   <div id="disc" class="hide">
     <div class="panel">
       <div class="section-title">Disclaimer / Aviso Legal</div>
@@ -219,7 +230,7 @@ function setDate(){
   const field=document.getElementById('cxGameDateTime');
   if(field&&document.activeElement!==field)field.value=formatDateTimeInput(d);
 }
-function show(id){['pres','teams','stat','more','disc'].forEach(x=>document.getElementById(x).classList.toggle('hide',x!==id));['tpres','tteams','tstat','tmore','tdisc'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('t'+id).classList.add('on');render();}
+function show(id){['pres','teams','stat','more','disc','rules'].forEach(x=>document.getElementById(x).classList.toggle('hide',x!==id));['tpres','tteams','tstat','tmore','tdisc','trules'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('t'+id).classList.add('on');render();}
 
 function setStatus(id,status){
   const antigo=players.find(p=>p.id===id);
@@ -274,7 +285,23 @@ function setStatusComPopup(id,status){
 function renderPlayers(){const box=document.getElementById('players');box.innerHTML='';players.forEach((p,i)=>{const d=document.createElement('div');d.className='player';const cls=p.status==='confirmado'?'ok':p.status==='nao'?'no':'pend';const txt=p.status==='confirmado'?'Confirmado':p.status==='nao'?'Não vai':'Pendente';const typeTxt=p.type==='mes'?'Mensalidade':'Ao jogo';const typeCls=p.type==='mes'?'month':'game';const stat=Math.max(0,Number(p.estatistica||0));d.innerHTML=`<div><div class="pname">${i+1}. ${p.name}</div><span class="state ${cls}">${txt}</span><span class="tag ${typeCls}">${typeTxt}</span><span class="tag month">Presenças ${stat}</span></div><div class="btns"><button class="mini b-ok" onclick="setStatusComPopup(${p.id},'confirmado')">Confirmar</button><button class="mini b-p" onclick="setStatusComPopup(${p.id},'pendente')">?</button><button class="mini b-no" onclick="setStatusComPopup(${p.id},'nao')">Não</button></div>`;box.appendChild(d);});}
 function renderStats(){document.getElementById('cOk').textContent=players.filter(p=>p.status==='confirmado').length;document.getElementById('cPend').textContent=players.filter(p=>p.status==='pendente').length;document.getElementById('cNo').textContent=players.filter(p=>p.status==='nao').length;}
 function renderPresenceRanking(){const box=document.getElementById('presenceRanking');if(!box)return;const ranking=[...players].filter(p=>!p.pontual).sort((a,b)=>Number(b.estatistica||0)-Number(a.estatistica||0)||String(a.name).localeCompare(String(b.name),'pt'));const total=ranking.reduce((sum,p)=>sum+Math.max(0,Number(p.estatistica||0)),0);const max=ranking.length?Math.max(...ranking.map(p=>Math.max(0,Number(p.estatistica||0)))):0;const e1=document.getElementById('statTotal'),e2=document.getElementById('statPlayers'),e3=document.getElementById('statLeader');if(e1)e1.textContent=total;if(e2)e2.textContent=ranking.length;if(e3)e3.textContent=max;box.innerHTML=ranking.length?ranking.map((p,i)=>`<div class="player"><div><div class="pname">${i+1}. ${p.name}</div><span class="tag month">Presenças ${Math.max(0,Number(p.estatistica||0))}</span></div><div class="num" style="font-size:22px">${Math.max(0,Number(p.estatistica||0))}</div></div>`).join(''):'<div class="empty">Sem estatísticas</div>'; }
-function renderTeams(){const box=document.getElementById('teamsBox');box.innerHTML='';const names=['Verde','Vermelha','Amarela'];const cls=['green','red','yellow'];if(!teams.length){box.innerHTML='<div class="panel empty">Ainda não há equipas sorteadas</div>';return;}teams.forEach((t,i)=>{const div=document.createElement('div');div.className='team '+cls[i%3];div.innerHTML='<h3>'+(i===0?'🟢 ':i===1?'🔴 ':'🟡 ')+names[i]+' · '+t.length+' jog.</h3>'+(t.length?t.map((p,k)=>`<div class="member">${k+1}. ${p.name}</div>`).join(''):'<div class="empty">Sem jogadores</div>');box.appendChild(div);});}
+const CX_COLORS={verde:{name:'Verde',emoji:'🟢',hex:'#20c65a'},vermelha:{name:'Vermelha',emoji:'🔴',hex:'#ff3b48'},amarela:{name:'Amarela',emoji:'🟡',hex:'#ffd21f'},azul:{name:'Azul',emoji:'🔵',hex:'#3c7cff'}};
+function cxTeamColors(){try{const a=JSON.parse(localStorage.getItem('cx_team_colors')||'[]');return [0,1,2,3].map((i)=>CX_COLORS[a[i]]?a[i]:['verde','vermelha','amarela','azul'][i]);}catch(e){return ['verde','vermelha','amarela','azul'];}}
+function cxSetTeamColor(i,value){if(!CX_COLORS[value])return;const colors=cxTeamColors();if(colors.some((c,j)=>c===value&&j!==i)){toast('Esta cor já pertence a outra equipa');renderTeams();return;}colors[i]=value;localStorage.setItem('cx_team_colors',JSON.stringify(colors));renderTeams();}
+function renderTeams(){
+  const box=document.getElementById('teamsBox'),controls=document.getElementById('teamColorControls'),colors=cxTeamColors();
+  box.innerHTML='';controls.innerHTML='';
+  const count=teams.length||3;
+  for(let i=0;i<count;i++){
+    const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;gap:12px;margin:9px 0;justify-content:space-between';
+    const label=document.createElement('span');label.textContent='Equipa '+(i+1);
+    const sel=document.createElement('select');sel.className='select';sel.style.maxWidth='200px';
+    Object.keys(CX_COLORS).forEach(key=>{const o=document.createElement('option');o.value=key;o.textContent=CX_COLORS[key].emoji+' '+CX_COLORS[key].name;o.selected=colors[i]===key;sel.appendChild(o);});
+    sel.onchange=()=>cxSetTeamColor(i,sel.value);line.append(label,sel);controls.appendChild(line);
+  }
+  if(!teams.length){box.innerHTML='<div class="panel empty">Ainda não há equipas sorteadas</div>';return;}
+  teams.forEach((t,i)=>{const color=CX_COLORS[colors[i]],div=document.createElement('div');div.className='team';div.style.background='linear-gradient(160deg,'+color.hex+'33,'+color.hex+'0d)';div.style.borderColor=color.hex;const h=document.createElement('h3');h.textContent=color.emoji+' '+color.name+' · '+t.length+' jog.';div.appendChild(h);t.forEach((p,k)=>{const row=document.createElement('div');row.className='member';row.textContent=(k+1)+'. '+p.name;div.appendChild(row);});box.appendChild(div);});
+}
 function render(){renderStats();renderPlayers();renderTeams();renderPresenceRanking();}
 
 function shuffle(a){return a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);}
@@ -316,7 +343,7 @@ function abrirWhatsApp(txt){
 }
 
 
-function message(){const c=players.filter(p=>p.status==='confirmado');let msg='⚽ CHUTA XUTA - Convocatória\n';msg+='Confirmados: '+c.length+'\n\n';if(teams.length){teams.forEach((t,i)=>{msg+=(i===0?'🟢 VERDE':i===1?'🔴 VERMELHO':'🟡 AMARELA')+'\n';msg+=t.map((p,k)=>(k+1)+'. '+p.name).join('\n')+'\n\n';});}else{msg+=c.map((p,i)=>(i+1)+'. '+p.name).join('\n');}return msg;}
+function message(){const c=players.filter(p=>p.status==='confirmado');let msg='⚽ CHUTA XUTA - Convocatória\n';msg+='Confirmados: '+c.length+'\n\n';if(teams.length){const colors=cxTeamColors();teams.forEach((t,i)=>{const color=CX_COLORS[colors[i]];msg+=color.emoji+' '+color.name.toUpperCase()+'\n';msg+=t.map((p,k)=>(k+1)+'. '+p.name).join('\n')+'\n\n';});}else{msg+=c.map((p,i)=>(i+1)+'. '+p.name).join('\n');}return msg;}
 function shareWhatsApp(){abrirWhatsApp(message());}
 function scheduleReminder(){const d=nextTuesday();d.setHours(18,0,0,0);if(window.ChutaAndroid){window.ChutaAndroid.scheduleNotification(d.getTime(),'Chuta Xuta','Confirma a tua presença para o jogo de hoje.');toast('Notificação agendada');}else{toast('Notificação só disponível na app Android');}}
 
