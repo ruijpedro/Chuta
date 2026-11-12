@@ -1,0 +1,30 @@
+name: Validar interface Chuta Xuta
+on:
+  push:
+    branches:
+      - develop/chutaxuta-v1.59-ota
+    paths:
+      - 'web/index.html'
+      - '.github/workflows/validate-chutaxuta-ui.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar JavaScript embebido
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('web/index.html','utf8');
+          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(x=>x.trim());
+          if(!scripts.length)throw Error('Sem JavaScript');
+          for(const js of scripts)new vm.Script(js);
+          for(const token of ['id="rules"','id="trules"','cxTeamColors','cxSetTeamColor','function renderTeams','function message']){
+            if(!html.includes(token))throw Error('Falta '+token);
+          }
+          console.log('Sintaxe JS válida, separador Estatutos e cores presentes');
+          NODE
